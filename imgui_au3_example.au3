@@ -24,7 +24,7 @@ While 1
 	
 	_ImGui_SetNextWindowSizeConstraints(300, 180, 600, 360)
 
-	_ImGui_Begin("Function List")
+	_ImGui_Begin("Demo ImGui-AutoIt")
 	_ImGui_Text("Chọn theme")
 	_ImGui_SameLine();
 	
