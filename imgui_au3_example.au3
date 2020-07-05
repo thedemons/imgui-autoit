@@ -35,7 +35,7 @@ While 1
 	_ImGui_Begin("Demo ImGui-AutoIt")
 	_ImGui_Text("Chọn theme")
 	_ImGui_SameLine();
-	
+
 	Local $old_theme = $i_radio_theme
 	_ImGui_RadioButton("Light", $i_radio_theme, 0)
 	_ImGui_SameLine();
@@ -43,8 +43,8 @@ While 1
 	_ImGui_SameLine();
 	_ImGui_RadioButton("Classic", $i_radio_theme, 2)
 	_ImGui_SameLine();
-	
-	
+
+
 	if _ImGui_BeginCombo("##combo_theme", $label_radio_theme[$i_radio_theme]) Then
 		for $i = 0 To UBound($label_radio_theme) - 1
 			if _ImGui_Selectable($label_radio_theme[$i], $i_radio_theme == $i) Then
@@ -52,7 +52,7 @@ While 1
 				_ImGui_SetItemDefaultFocus()
 			EndIf
 		Next
-		
+
 		_ImGui_EndCombo()
 	EndIf
 
@@ -70,7 +70,7 @@ While 1
 
 	Local $winSize = _ImGui_GetWindowSize()
 	_ImGui_Separator()
-	
+
 	_ImGui_NewLine()
 	_ImGui_CheckBox("Show demo window", $b_show_demo_window)
 
@@ -82,7 +82,7 @@ While 1
 	_ImGui_NextColumn()
 	_ImGui_NewLine()
 	if _ImGui_Button("LOGIN", -1, 40) Then $str_status = "Login success"
-		
+
 
 	_ImGui_Columns(1)
 	_ImGui_NewLine()
@@ -93,10 +93,10 @@ While 1
 		EndIf
 	Next
 	_ImGui_EndChild()
+	_ImGui_End()
 
 	If $b_show_demo_window Then DllCall($IMGUI_DLL, "none:cdecl", "ShowDemoWindow")
 
-	_ImGui_End()
 	_ImGui_EndFrame()
 
 WEnd
