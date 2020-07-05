@@ -419,6 +419,11 @@ Global Const $ImDrawListFlags_AllowVtxOffset   = BitShift(1, -2)
 
 
 
+Func _ImGui_EnableViewports($enable = True)
+	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "EnableViewports", "bool", $enable)
+EndFunc
+
+
 Func _ImGui_GUICreate($title, $w, $h, $x = -1, $y = -1)
 
 	Local $result = DllCall($IMGUI_DLL, "hwnd:cdecl", "GUICreate", "wstr", $title, "int", $w, "int", $h, "int", $x, "int", $y)

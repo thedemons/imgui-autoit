@@ -3,9 +3,20 @@
 #include "imgui.au3"
 
 
-
+_ImGui_EnableViewports()
 $hwnd = _ImGui_GUICreate("AutoIt ImGui", 1024, 768)
 _WinAPI_ShowWindow($hwnd)
+
+_ImGui_StyleColorsLight()
+
+$io = _ImGui_GetIO()
+$imstyle = _ImGui_GetStyle()
+$imstyle.WindowTitleAlign_x = 0.5
+$imstyle.WindowTitleAlign_y = 0.5
+
+$io.ConfigFlags = Bitor($io.ConfigFlags, $ImGuiConfigFlags_DockingEnable)
+
+
 
 Local $i_list_view = 0
 Local $i_radio_theme = 0
@@ -13,15 +24,12 @@ Local $label_radio_theme[] = ["Light", "Dark", "Classic"]
 Local $username = ""
 Local $password = ""
 Local $str_status = ""
-
 Local $b_show_demo_window = False
 
-_ImGui_StyleColorsLight()
 
 While 1
 	if Not _ImGui_PeekMsg() Then Exit
 	_ImGui_BeginFrame()
-	
 	_ImGui_SetNextWindowSizeConstraints(300, 180, 600, 360)
 
 	_ImGui_Begin("Demo ImGui-AutoIt")
@@ -35,7 +43,8 @@ While 1
 	_ImGui_SameLine();
 	_ImGui_RadioButton("Classic", $i_radio_theme, 2)
 	_ImGui_SameLine();
-
+	
+	
 	if _ImGui_BeginCombo("##combo_theme", $label_radio_theme[$i_radio_theme]) Then
 		for $i = 0 To UBound($label_radio_theme) - 1
 			if _ImGui_Selectable($label_radio_theme[$i], $i_radio_theme == $i) Then
