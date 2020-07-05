@@ -3,45 +3,91 @@
 #include "imgui.au3"
 
 
+
 $hwnd = _ImGui_GUICreate("AutoIt ImGui", 1024, 768)
 _WinAPI_ShowWindow($hwnd)
-;~ MsgBox(0,"",$hwnd)
 
-Local $b_show_window = True
-Local $b_show_text = False
-Local $b_show_demo_window = True
-Local $b_show_another_window = True
-Local $f_value = 10
-Local $i_count = 0
+Local $i_list_view = 0
+Local $i_radio_theme = 0
+Local $label_radio_theme[] = ["Light", "Dark", "Classic"]
+Local $username = ""
+Local $password = ""
+Local $str_status = ""
+
+Local $b_show_demo_window = False
+
+_ImGui_StyleColorsLight()
 
 While 1
 	if Not _ImGui_PeekMsg() Then Exit
 	_ImGui_BeginFrame()
+	
+	_ImGui_SetNextWindowSizeConstraints(300, 180, 600, 360)
 
-	_ImGui_Begin("A Window")
+	_ImGui_Begin("Function List")
+	_ImGui_Text("Chọn theme")
+	_ImGui_SameLine();
+	
+	Local $old_theme = $i_radio_theme
+	_ImGui_RadioButton("Light", $i_radio_theme, 0)
+	_ImGui_SameLine();
+	_ImGui_RadioButton("Dark", $i_radio_theme, 1)
+	_ImGui_SameLine();
+	_ImGui_RadioButton("Classic", $i_radio_theme, 2)
+	_ImGui_SameLine();
 
-	_ImGui_Text("Hỗ trợ Tiếng Việt")
-	_ImGui_CheckBox("Show demo window", $b_show_demo_window)
-	_ImGui_CheckBox("Show another window", $b_show_another_window)
-;~ 	If $b_show_another_window Then Exit
-
-	If _ImGui_Button("Click Me") Then $i_count += 1
-	_ImGui_SameLine()
-	_ImGui_Text("count: " & $i_count)
-
-
-	_ImGui_SliderFloat("Slider", $f_value, 5, 30)
-	_ImGui_End()
-
-	If $b_show_another_window Then
-		$b_show_another_window = _ImGui_Begin("Another Window", True)
-		_ImGui_Text("Hello....")
-		If _ImGui_Button("Close Me") Then $b_show_another_window = False
-		_ImGui_End()
+	if _ImGui_BeginCombo("##combo_theme", $label_radio_theme[$i_radio_theme]) Then
+		for $i = 0 To UBound($label_radio_theme) - 1
+			if _ImGui_Selectable($label_radio_theme[$i], $i_radio_theme == $i) Then
+				$i_radio_theme = $i
+				_ImGui_SetItemDefaultFocus()
+			EndIf
+		Next
+		
+		_ImGui_EndCombo()
 	EndIf
+
+	If $old_theme <> $i_radio_theme Then
+		Switch $i_radio_theme
+			Case 0
+				_ImGui_StyleColorsLight()
+			Case 1
+				_ImGui_StyleColorsDark()
+			Case 2
+				_ImGui_StyleColorsClassic()
+		EndSwitch
+	EndIf
+
+
+	Local $winSize = _ImGui_GetWindowSize()
+	_ImGui_Separator()
+	
+	_ImGui_NewLine()
+	_ImGui_CheckBox("Show demo window", $b_show_demo_window)
+
+	_ImGui_Columns(2)
+	_ImGui_SetColumnWidth(0, $winSize[0]*0.7)
+	_ImGui_NewLine()
+	_ImGui_InputTextWithHint("username", "username", $username, $ImGuiInputTextFlags_CharsNoBlank)
+	_ImGui_InputTextWithHint("password", "password", $password, $ImGuiInputTextFlags_Password)
+	_ImGui_NextColumn()
+	_ImGui_NewLine()
+	if _ImGui_Button("LOGIN", -1, 40) Then $str_status = "Login success"
+		
+
+	_ImGui_Columns(1)
+	_ImGui_NewLine()
+	_ImGui_BeginChild("##child_list_view1", $winSize*0.6, $winSize[1] *0.3, true, $ImGuiWindowFlags_ChildWindow)
+	for $i = 0 To 10
+		if _ImGui_Selectable("Selectable - " & $i, $i = $i_list_view) Then
+			$i_list_view = $i
+		EndIf
+	Next
+	_ImGui_EndChild()
 
 	If $b_show_demo_window Then DllCall($IMGUI_DLL, "none:cdecl", "ShowDemoWindow")
 
+	_ImGui_End()
 	_ImGui_EndFrame()
 
 WEnd
