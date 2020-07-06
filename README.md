@@ -12,13 +12,14 @@
 
 ### Preview
   
-![](https://i.imgur.com/gc6xjWf.png)
+![](https://i.imgur.com/gc6xjWf.png =505x355)
 
 ### Usage
 ```autoit
-; Create a window
 #include <WinAPI.au3>
 #include "ImGui.au3"
+
+; Create a window
 Local $hwnd = _ImGui_GUICreate("AutoIt ImGui", 1024, 768)
 _WinAPI_ShowWindow($hwnd)
 
