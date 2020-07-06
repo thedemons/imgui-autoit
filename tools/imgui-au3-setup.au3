@@ -339,6 +339,12 @@ Func _WriteImGuiUDF()
 	_Write_CallTip("_ImDraw_PathRect", 						'_ImDraw_PathRect($rect_min_x, $rect_min_y, $rect_max_x, $rect_max_y, $rounding = 0, $rounding_corners = $ImDrawCornerFlags_All) ')
 	_Write_CallTip("_ImDraw_PathBezierCurveTo", 			'_ImDraw_PathBezierCurveTo($p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $num_segments = 0) ')
 
+	_Write_CallTip("_ImDraw_AddImageFit", 					'_ImDraw_AddImageFit($user_texture_id, $pos_x, $pos_y, $size_x, $size_y, $crop_area = True, $rounding = 0, $tint_col = 0xFFFFFFFF, $rounding_corners = $ImDrawCornerFlags_All) ')
+	_Write_CallTip("_ImGui_ImageFit", 						'_ImGui_ImageFit($user_texture_id, $size_x, $size_y, $tint_col = 0xFFFFFFFF, $border_col = 0x0) ')
+	_Write_CallTip("_ImGui_ImageFromFile", 					'_ImGui_ImageFromFile($file_path) ')
+	_Write_CallTip("_ImGui_ImageFromURL", 					'_ImGui_ImageFromURL($url) ')
+	_Write_CallTip("_ImGui_ImageGetSize", 					'_ImGui_ImageGetSize($user_texture_id) ')
+
 	_Write_CallTip("_GetStructArrayValue", 				'_GetStructArrayValue($struct, $index, $index_array) Use to get data from ImGuiIO')
 	_Write_CallTip("_SetStructArrayValue", 				'_SetStructArrayValue($struct, $index, $index_array, $value) Set ImGuiIO data')
 
