@@ -7,6 +7,7 @@
 _ImGui_EnableViewports()
 $hwnd = _ImGui_GUICreate("AutoIt ImGui", 1024, 768)
 _WinAPI_ShowWindow($hwnd)
+;~ GUISetState(@SW_SHOW, $Hwnd)
 
 _ImGui_StyleColorsLight()
 
@@ -29,9 +30,11 @@ Local $b_show_another_window = False
 
 
 While 1
-	
+
 	; when the user click close button on the window, this will return false
 	if Not _ImGui_PeekMsg() Then Exit
+
+	; must call
 	_ImGui_BeginFrame()
 
 	; Set next window min/max size [380, 180] -> [600, 360]
@@ -105,7 +108,7 @@ While 1
 	_ImGui_PopItemWidth()
 
 	if $str_status <> "" then _ImGui_TextColored($str_status, 0xFF33BB44)
-	
+
 	; go to the next column
 	_ImGui_NextColumn()
 	_ImGui_NewLine()
@@ -117,7 +120,7 @@ While 1
 	_ImGui_Columns(1)
 	_ImGui_NewLine()
 
-	; begin a child window inside the main window 
+	; begin a child window inside the main window
 	_ImGui_BeginChild("##child_list_view1", $winSize*0.6, $winSize[1] *0.3, true, $ImGuiWindowFlags_ChildWindow)
 	for $i = 0 To 10
 		if _ImGui_Selectable("Selectable - " & $i, $i = $i_list_view) Then
@@ -139,6 +142,7 @@ While 1
 
 	If $b_show_demo_window Then _ImGui_ShowDemoWindow()
 
+	; must call
 	_ImGui_EndFrame()
 
 WEnd
