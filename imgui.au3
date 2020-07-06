@@ -1,19 +1,18 @@
 
+; author:	thedemons
+
 #include <WinAPI.au3>
 #include <WinAPIDiag.au3>
 
+Local $__imgui_dllpath = @TempDir & "\temp-data-" & TimerInit() & ".tmp"
 
-
-
-;~ If FileExists("imgui.dll")
-Local $dllPath = @TempDir & "\temp-data-" & TimerInit() & ".tmp"
-
-If Not FileInstall("imgui.dll", $dllPath) Then
+If Not FileInstall(@AutoItX64 ? "imgui_64.dll" : "imgui.dll", $__imgui_dllpath) Then
 	MsgBox(16, "Error", "Cannot find imgui.dll")
+	Exit
 EndIf
 
-Global $IMGUI_DLL = DllOpen($dllPath)
 
+Global $IMGUI_DLL = DllOpen($__imgui_dllpath)
 
 If $IMGUI_DLL = -1 Then
 	MsgBox(16, "Error", "Cannot load imgui.dll" & @CRLF & "Please update to the latest version of DirectX")
@@ -24,7 +23,7 @@ OnAutoItExitRegister(Shutdown_)
 Func Shutdown_()
 	_ImGui_ShutDown()
 	DllClose($IMGUI_DLL)
-	FileDelete($dllPath)
+	FileDelete($__imgui_dllpath)
 EndFunc
 
 Func _ImGui_ShutDown()
@@ -467,7 +466,7 @@ EndFunc
 Func _ImGui_GUICreate($title, $w, $h, $x = -1, $y = -1, $style = 0, $ex_style = 0)
 
 	Local $result = DllCall($IMGUI_DLL, "hwnd:cdecl", "GUICreate", "wstr", $title, "int", $w, "int", $h, "int", $x, "int", $y)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 
 	If $style <> 0 Then _WinAPI_SetWindowLong($result[0], $GWL_STYLE, $style)
 	If $ex_style <> 0 Then _WinAPI_SetWindowLong($result[0], $GWL_EXSTYLE, $ex_style)
@@ -476,7 +475,7 @@ EndFunc
 
 Func _ImGui_PeekMsg()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "PeekMsg")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 
@@ -489,7 +488,7 @@ Func _ImGui_Begin($title, $close_btn = False, $flags = $ImGuiWindowFlags_None)
 	EndIf
 
 	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "Begin", "wstr", $title, "ptr", $close_ptr, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 
 	If $close_btn = False Then Return True
 	Return $b_close.value
@@ -498,7 +497,7 @@ EndFunc
 Func _ImGui_BeginChild($text, $w = 0, $h = 0, $border = False, $flags = $ImGuiWindowFlags_None)
 
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginChild", "wstr", $text, "float", $w, "float", $h, "boolean", $border, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_End()
@@ -510,7 +509,7 @@ EndFunc
 
 Func _ImGui_Button($text, $w = 0, $h = 0)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "Button", "wstr", $text, "float", $w, "float", $h)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 
@@ -521,7 +520,7 @@ Func _ImGui_InputText($label, ByRef $buf, $flags = $ImGuiInputTextFlags_None, $b
 	$struct_buf.value = $buf
 
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputText", "wstr", $label, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "int", $flags, "ptr", 0, "ptr", 0)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 
 	$buf = $struct_buf.value
 	Return $result[0]
@@ -534,7 +533,7 @@ Func _ImGui_InputTextMultiline($label, ByRef $buf, $size_x = 0, $size_y = 0, $fl
 
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputTextMultiline", "wstr", $label, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "float", $size_x, "float", $size_y, "int", $flags, "ptr", 0, "ptr", 0)
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 
 	$buf = $struct_buf.value
 	Return $result[0]
@@ -546,7 +545,7 @@ Func _ImGui_InputTextWithHint($label, $hint, ByRef $buf, $flags = $ImGuiInputTex
 	$struct_buf.value = $buf
 
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputTextWithHint", "wstr", $label, "wstr", $hint, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$buf = $struct_buf.value
 	Return $result[0]
 EndFunc
@@ -561,7 +560,7 @@ Func _ImGui_SliderFloat($text, ByRef $value, $v_min, $v_max, $format = "%.3f", $
 	Local $struct = DllStructCreate("float value;")
 	$struct.value = $value
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "SliderFloat", "wstr", $text, "ptr", DllStructGetPtr($struct), "float", $v_min, "float", $v_max, "str", $format, "float", $power)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$value = $struct.value
 	Return $result[0]
 EndFunc
@@ -571,7 +570,7 @@ Func _ImGui_CheckBox($text, ByRef $active)
 	$b_active.value = $active
 
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "Checkbox", "wstr", $text, "ptr", DllStructGetPtr($b_active))
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$active = $b_active.value
 	Return $result[0]
 EndFunc
@@ -602,25 +601,25 @@ EndFunc
 
 Func _ImGui_IsWindowAppearing()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsWindowAppearing")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsWindowCollapsed()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsWindowCollapsed")
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsWindowFocused($flags = $ImGuiFocusedFlags_None)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsWindowFocused", "int", $flags)
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsWindowHovered($flags = $ImGuiFocusedFlags_None)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsWindowHovered", "int", $flags)
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 
@@ -629,22 +628,22 @@ EndFunc
 
 Func _ImGui_GetWindowDrawList()
 	Local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetWindowDrawList")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetOverlayDrawList()
 	Local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetOverlayDrawList")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetBackgroundDrawList()
 	Local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetBackgroundDrawList")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetForegroundDrawList()
 	Local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetForegroundDrawList")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 
@@ -706,7 +705,7 @@ EndFunc
 Func _ImGui_SetWindowCollapsedByName($name, $collapsed, $cond = 0)
 	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "SetWindowCollapsedByName", "wstr", $name, "boolean", $collapsed, "int", $cond)
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_SetWindowFocusByName($name)
@@ -719,7 +718,7 @@ Func ___ImGui_RecvImVec2($return_type, $func_name)
 	Local $struct_y = DllStructCreate("float value;")
 	Local $result = DllCall($IMGUI_DLL, $return_type, $func_name, "ptr", DllStructGetPtr($struct_x), "ptr", DllStructGetPtr($struct_y))
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Local $ret[2] = [$struct_x.value, $struct_y.value]
 	Return $ret
 
@@ -757,7 +756,7 @@ Func _ImGui_GetMouseDragDelta($button = $ImGuiMouseButton_Left, $lock_threshold 
 	Local $struct_x = DllStructCreate("float value;")
 	Local $struct_y = DllStructCreate("float value;")
 	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "GetMouseDragDelta", "int", $button, "float", $lock_threshold, "ptr", DllStructGetPtr($struct_x),"ptr", DllStructGetPtr($struct_y))
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Local $ret[2] = [$struct_x.value, $struct_y.value]
 	Return $ret
 EndFunc
@@ -765,31 +764,31 @@ EndFunc
 
 Func _ImGui_GetWindowContentRegionWidth()
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetWindowContentRegionWidth")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetScrollX()
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetScrollX")
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetScrollY()
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetScrollY")
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetScrollMaxX()
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetScrollMaxX")
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetScrollMaxY()
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetScrollMaxY")
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_SetScrollX($scroll_x)
@@ -835,13 +834,13 @@ Func _ImGui_PopStyleVar($count = 1)
 EndFunc
 Func _ImGui_GetFont()
 	Local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetFont")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetFontSize()
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetFontSize")
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 
@@ -852,7 +851,7 @@ EndFunc
 
 Func _ImGui_GetColorU32($idx, $alpha_mul = 1)
 	Local $result = DllCall($IMGUI_DLL, "ImU32:cdecl", "GetColorU32", "int", $idx, "float", $alpha_mul)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_PushItemWidth($item_width)
@@ -866,7 +865,7 @@ Func _ImGui_SetNextItemWidth($item_width)
 EndFunc
 Func _ImGui_CalcItemWidth()
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "CalcItemWidth")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_PushTextWrapPos($wrap_pos_x = 0)
@@ -935,22 +934,22 @@ Func _ImGui_AlignTextToFramePadding()
 EndFunc
 Func _ImGui_GetTextLineHeight()
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetTextLineHeight")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetTextLineHeightWithSpacing()
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetTextLineHeightWithSpacing")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetFrameHeight()
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetFrameHeight")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetFrameHeightWithSpacing()
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetFrameHeightWithSpacing")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_PushID($str_id)
@@ -961,7 +960,7 @@ Func _ImGui_PopID()
 EndFunc
 Func _ImGui_GetID($str_id)
 	Local $result = DllCall($IMGUI_DLL, "uint:cdecl", "GetID", "wstr", $str_id)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 
@@ -982,17 +981,17 @@ Func _ImGui_BulletText($text)
 EndFunc
 Func _ImGui_SmallButton($label)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "SmallButton", "wstr", $label)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_InvisibleButton($str_id, $size_x, $size_y)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InvisibleButton", "wstr", $str_id, "float", $size_x, "float", $size_y)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_ArrowButton($str_id, $dir = $ImGuiDir_Up)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ArrowButton", "wstr", $str_id, "int", $dir)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_Image($user_texture_id, $size_x, $size_y, $uv0_x = 0, $uv0_y = 0, $uv1_x = 1, $uv1_y = 1, $tint_col = 0xFFFFFFFF, $border_col = 0)
@@ -1001,7 +1000,7 @@ EndFunc
 
 Func _ImGui_ImageButton($user_texture_id, $size_x, $size_y, $uv0_x = 0, $uv0_y = 0, $uv1_x = 1, $uv1_y = 1, $frame_padding = -1, $bg_col = 0, $tint_col = 0xFFFFFFFF)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ImageButton", "int", $user_texture_id, "float", $size_x, "float", $size_y, "float", $uv0_x, "float", $uv0_y, "float", $uv1_x, "float", $uv1_y, "int", $frame_padding, "uint", $bg_col, "uint", $tint_col)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_CheckboxFlags($label, ByRef $flags, $flags_value)
@@ -1009,7 +1008,7 @@ Func _ImGui_CheckboxFlags($label, ByRef $flags, $flags_value)
 	$struct_flags.value = $flags
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "CheckboxFlags", "wstr", $label, "ptr", DllStructGetPtr($struct_flags), "uint", $flags_value)
 	$flags = $struct_flags.value
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_RadioButton($label, ByRef $v, $v_button)
@@ -1017,7 +1016,7 @@ Func _ImGui_RadioButton($label, ByRef $v, $v_button)
 	$struct_v.value = $v
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "RadioButton", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "int", $v_button)
 	$v = $struct_v.value
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_ProgressBar($fraction, $size_arg_x = -1, $size_arg_y = 0, $overlay = "")
@@ -1028,7 +1027,7 @@ Func _ImGui_Bullet()
 EndFunc
 Func _ImGui_BeginCombo($label, $preview_value, $flags = $ImGuiComboFlags_None)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginCombo", "wstr", $label, "wstr", $preview_value, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_EndCombo()
@@ -1220,7 +1219,7 @@ Global Const $__tagImGuiViewport = _
 Func _ImGui_GetIO()
 
 	local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetIO")
-	If @error then return False
+	If @error Then Return SetError(1, 0, 0)
 
 	Local $struct = DllStructCreate($__tagImGuiIO, $result[0])
 	return $struct
@@ -1228,7 +1227,7 @@ EndFunc
 Func _ImGui_GetStyle()
 
 	local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetStyle")
-	If @error then return False
+	If @error Then Return SetError(1, 0, 0)
 
 	Local $struct = DllStructCreate($__tagImGuiStyle, $result[0])
 	return $struct
@@ -1238,7 +1237,7 @@ Func _ImGui_SetStyleColor($index, $color = 0xFFFFFFFF)
 EndFunc
 Func _ImGui_Selectable($label, $selected = False, $flags = $ImGuiSelectableFlags_None, $size_arg_x = 0, $size_arg_y = 0)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "Selectable", "wstr", $label, "boolean", $selected, "int", $flags, "float", $size_arg_x, "float", $size_arg_y)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_Columns($columns_count = 1, $id = "", $border = true)
@@ -1249,12 +1248,12 @@ Func _ImGui_NextColumn()
 EndFunc
 Func _ImGui_GetColumnIndex()
 	Local $result = DllCall($IMGUI_DLL, "int:cdecl", "GetColumnIndex")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetColumnWidth($column_index = -1)
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetColumnWidth", "int", $column_index)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_SetColumnWidth($column_index, $width)
@@ -1262,7 +1261,7 @@ Func _ImGui_SetColumnWidth($column_index, $width)
 EndFunc
 Func _ImGui_GetColumnOffset($column_index = -1)
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetColumnOffset", "int", $column_index)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_SetColumnOffset($column_index, $offset)
@@ -1270,7 +1269,7 @@ Func _ImGui_SetColumnOffset($column_index, $offset)
 EndFunc
 Func _ImGui_GetColumnsCount()
 	Local $result = DllCall($IMGUI_DLL, "int:cdecl", "GetColumnsCount")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_DragFloat($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%3.f", $power = 1)
@@ -1279,14 +1278,14 @@ Func _ImGui_DragFloat($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $f
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "DragFloat", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "float", $v_speed, "float", $v_min, "float", $v_max, "wstr", $format, "float", $power)
 	ToolTip($v & " - " & $struct_v.value)
 	$v = $struct_v.value
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_DragInt($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%d")
 	Local $struct_v = DllStructCreate('int value;')
 	$struct_v.value = $v
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "DragInt", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "float", $v_speed, "int", $v_min, "int", $v_max, "wstr", $format)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$v = $struct_v.value
 	Return $result[0]
 EndFunc
@@ -1294,7 +1293,7 @@ Func _ImGui_SliderAngle($label, ByRef $v_rad, $v_degrees_min = -360, $v_degrees_
 	Local $struct_v_rad = DllStructCreate('float value;')
 	$struct_v_rad.value = $v_rad
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "SliderAngle", "wstr", $label, "ptr", DllStructGetPtr($struct_v_rad), "float", $v_degrees_min, "float", $v_degrees_max, "wstr", $format)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$v_rad = $struct_v_rad.value
 	Return $result[0]
 EndFunc
@@ -1302,7 +1301,7 @@ Func _ImGui_VSliderFloat($label, $size_x, $size_y, ByRef $v, $v_min, $v_max, $fo
 	Local $struct_v = DllStructCreate('float value;')
 	$struct_v.value = $v
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "VSliderFloat", "wstr", $label, "float", $size_x, "float", $size_y, "ptr", DllStructGetPtr($struct_v), "float", $v_min, "float", $v_max, "wstr", $format, "float", $power)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$v = $struct_v.value
 	Return $result[0]
 EndFunc
@@ -1310,7 +1309,7 @@ Func _ImGui_VSliderInt($label, $size_x, $size_y, ByRef $v, $v_min, $v_max, $form
 	Local $struct_v = DllStructCreate('int value;')
 	$struct_v.value = $v
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "VSliderInt", "wstr", $label, "float", $size_x, "float", $size_y, "ptr", DllStructGetPtr($struct_v), "int", $v_min, "int", $v_max, "wstr", $format)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$v = $struct_v.value
 	Return $result[0]
 EndFunc
@@ -1318,7 +1317,7 @@ Func _ImGui_InputFloat($label, ByRef $v, $step = 0, $step_fast = 0, $format = "%
 	Local $struct_v = DllStructCreate('float value;')
 	$struct_v.value = $v
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputFloat", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "float", $step, "float", $step_fast, "wstr", $format, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$v = $struct_v.value
 	Return $result[0]
 EndFunc
@@ -1326,7 +1325,7 @@ Func _ImGui_InputInt($label, ByRef $v, $step = 1, $step_fast = 100, $flags = $Im
 	Local $struct_v = DllStructCreate('int value;')
 	$struct_v.value = $v
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputInt", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "int", $step, "int", $step_fast, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$v = $struct_v.value
 	Return $result[0]
 EndFunc
@@ -1334,18 +1333,18 @@ Func _ImGui_InputDouble($label, ByRef $v, $step = 0, $step_fast = 0, $format = "
 	Local $struct_v = DllStructCreate('double value;')
 	$struct_v.value = $v
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputDouble", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "double", $step, "double", $step_fast, "wstr", $format, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$v = $struct_v.value
 	Return $result[0]
 EndFunc
 Func _ImGui_TreeNode($label)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "TreeNode", "wstr", $label)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_TreeNodeEx($label, $flags = $ImGuiTreeNodeFlags_None)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "TreeNodeEx", "wstr", $label, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_TreePush($str_id)
@@ -1356,19 +1355,19 @@ Func _ImGui_TreePop()
 EndFunc
 Func _ImGui_GetTreeNodeToLabelSpacing()
 	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetTreeNodeToLabelSpacing")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_CollapsingHeader($label, $flags = $ImGuiTreeNodeFlags_None)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "CollapsingHeader", "wstr", $label, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_CollapsingHeaderEx($label, ByRef $p_open, $flags = $ImGuiTreeNodeFlags_None)
 	Local $struct_p_open = DllStructCreate('boolean value;')
 	$struct_p_open.value = $p_open
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "CollapsingHeaderEx", "wstr", $label, "ptr", DllStructGetPtr($struct_p_open), "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$p_open = $struct_p_open.value
 	Return $result[0]
 EndFunc
@@ -1401,18 +1400,18 @@ Func _ImGui_ListBox($label, ByRef $current_item, $items, $height_items = -1)
 
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ListBox", "wstr", $label, "ptr", DllStructGetPtr($struct_current_item), "ptr", DllStructGetPtr($struct_item), "ptr", DllStructGetPtr($struct_item_count), "int", $height_items)
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$current_item = $struct_current_item.value
 	Return $result[0]
 EndFunc
 Func _ImGui_ListBoxHeader($label, $size_arg_x = 0, $size_arg_y = 0)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ListBoxHeader", "wstr", $label, "float", $size_arg_x, "float", $size_arg_y)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_ListBoxHeaderEx($label, $items_count, $height_in_items = -1)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ListBoxHeaderEx", "wstr", $label, "int", $items_count, "int", $height_in_items)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_ListBoxFooter()
@@ -1464,7 +1463,7 @@ EndFunc
 
 Func _ImGui_BeginMenuBar()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginMenuBar")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_EndMenuBar()
@@ -1472,7 +1471,7 @@ Func _ImGui_EndMenuBar()
 EndFunc
 Func _ImGui_BeginMainMenuBar()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginMainMenuBar")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_EndMainMenuBar()
@@ -1480,7 +1479,7 @@ Func _ImGui_EndMainMenuBar()
 EndFunc
 Func _ImGui_BeginMenu($label, $enabled)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginMenu", "wstr", $label, "boolean", $enabled)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_EndMenu()
@@ -1488,14 +1487,14 @@ Func _ImGui_EndMenu()
 EndFunc
 Func _ImGui_MenuItem($label, $shortcut = "", $selected = False, $enabled = True)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "MenuItem", "wstr", $label, "wstr", $shortcut, "boolean", $selected, "boolean", $enabled)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_MenuItemEx($label, $shortcut, ByRef $p_selected, $enabled = True)
 	Local $struct_p_selected = DllStructCreate('boolean value;')
 	$struct_p_selected.value = $p_selected
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "MenuItemEx", "wstr", $label, "wstr", $shortcut, "ptr", DllStructGetPtr($struct_p_selected), "boolean", $enabled)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$p_selected = $struct_p_selected.value
 	Return $result[0]
 EndFunc
@@ -1518,14 +1517,14 @@ Func _ImGui_SetTooltip($text)
 EndFunc
 Func _ImGui_BeginPopup($str_id, $flags = $ImGuiWindowFlags_None)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginPopup", "wstr", $str_id, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 
 Func _ImGui_BeginPopupModal($name, $flags = $ImGuiWindowFlags_None)
 
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginPopupModal", "wstr", $name, "ptr", 0, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 
@@ -1535,7 +1534,7 @@ Func _ImGui_BeginPopupModalEx($name, ByRef $p_open, $flags = $ImGuiWindowFlags_N
 	$struct_p_open.value = $p_open
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginPopupModal", "wstr", $name, "ptr", DllStructGetPtr($struct_p_open), "int", $flags)
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$p_open = $struct_p_open.value
 	Return $result[0]
 EndFunc
@@ -1547,7 +1546,7 @@ Func _ImGui_OpenPopup($str_id, $popup_flags = $ImGuiPopupFlags_MouseButtonLeft)
 EndFunc
 Func _ImGui_OpenPopupContextItem($str_id = "", $popup_flags = $ImGuiPopupFlags_MouseButtonLeft)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "OpenPopupContextItem", "wstr", $str_id, "int", $popup_flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_CloseCurrentPopup()
@@ -1555,27 +1554,27 @@ Func _ImGui_CloseCurrentPopup()
 EndFunc
 Func _ImGui_BeginPopupContextItem($str_id = "", $popup_flags = $ImGuiPopupFlags_MouseButtonLeft)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginPopupContextItem", "wstr", $str_id, "int", $popup_flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_BeginPopupContextWindow($str_id = "", $popup_flags = $ImGuiPopupFlags_MouseButtonLeft)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginPopupContextWindow", "wstr", $str_id, "int", $popup_flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_BeginPopupContextVoid($str_id = "", $popup_flags = $ImGuiPopupFlags_MouseButtonLeft)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginPopupContextVoid", "wstr", $str_id, "int", $popup_flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsPopupOpen($str_id, $popup_flags = $ImGuiPopupFlags_None)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsPopupOpen", "wstr", $str_id, "int", $popup_flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_BeginTabBar($str_id, $flags = $ImGuiTabBarFlags_None)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginTabBar", "wstr", $str_id, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_EndTabBar()
@@ -1585,13 +1584,13 @@ Func _ImGui_BeginTabItemEx($label, ByRef $p_open, $flags = $ImGuiTabItemFlags_No
 	Local $struct_p_open = DllStructCreate('boolean value;')
 	$struct_p_open.value = $p_open
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginTabItem", "wstr", $label, "ptr", DllStructGetPtr($struct_p_open), "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	$p_open = $struct_p_open.value
 	Return $result[0]
 EndFunc
 Func _ImGui_BeginTabItem($label, $flags = $ImGuiTabItemFlags_None)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginTabItem", "wstr", $label, "ptr", 0, "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_EndTabItem()
@@ -1606,7 +1605,7 @@ EndFunc
 Func _ImGui_DockSpaceOverViewport($viewport = 0, $dockspace_flags = $ImGuiDockNodeFlags_None)
 
 	Local $result = DllCall($IMGUI_DLL, "ImGuiID:cdecl", "DockSpaceOverViewport", "ptr", $viewport, "int", $dockspace_flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_SetNextWindowDockID($id, $cond = 0)
@@ -1617,17 +1616,17 @@ Func _ImGui_SetNextWindowClass($window_class)
 EndFunc
 Func _ImGui_GetWindowDockID()
 	Local $result = DllCall($IMGUI_DLL, "ImGuiID:cdecl", "GetWindowDockID")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsWindowDocked()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsWindowDocked")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_BeginDragDropSource($flags = $ImGuiDragDropFlags_None)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginDragDropSource", "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_PushClipRect($clip_rect_min_x, $clip_rect_min_y, $clip_rect_max_x, $clip_rect_max_y, $intersect_with_current_clip_rect)
@@ -1644,62 +1643,62 @@ Func _ImGui_SetKeyboardFocusHere($offset = 0)
 EndFunc
 Func _ImGui_IsItemHovered($flags = $ImGuiHoveredFlags_None)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemHovered", "int", $flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsItemActive()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemActive")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsItemFocused()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemFocused")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsItemVisible()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemVisible")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsItemEdited()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemEdited")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsItemActivated()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemActivated")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsItemDeactivated()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemDeactivated")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsItemDeactivatedAfterEdit()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemDeactivatedAfterEdit")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsItemToggledOpen()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemToggledOpen")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsAnyItemHovered()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsAnyItemHovered")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsAnyItemActive()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsAnyItemActive")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsAnyItemFocused()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsAnyItemFocused")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_SetItemAllowOverlap()
@@ -1707,32 +1706,32 @@ Func _ImGui_SetItemAllowOverlap()
 EndFunc
 Func _ImGui_IsItemClicked($mouse_button = $ImGuiMouseButton_Left)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemClicked", "int", $mouse_button)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsRectVisible($size_x, $size_y)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsRectVisible", "float", $size_x, "float", $size_y)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsRectVisibleEx($rect_min_x, $rect_min_y, $rect_max_x, $rect_max_y)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsRectVisibleEx", "float", $rect_min_x, "float", $rect_min_y, "float", $rect_max_x, "float", $rect_max_y)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetTime()
 	Local $result = DllCall($IMGUI_DLL, "double:cdecl", "GetTime")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetFrameCount()
 	Local $result = DllCall($IMGUI_DLL, "int:cdecl", "GetFrameCount")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_BeginChildFrame($id, $size_x, $size_y, $extra_flags = $ImGuiWindowFlags_None)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginChildFrame", "int", $id, "float", $size_x, "float", $size_y, "int", $extra_flags)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_EndChildFrame()
@@ -1745,34 +1744,34 @@ Func _ImGui_CalcTextSize($text, $hide_text_after_double_hash = false, $wrap_widt
 
 	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "CalcTextSize", "wstr", $text, "boolean", $hide_text_after_double_hash, "float", $wrap_width, "ptr", DllStructGetPtr($struct_x), "ptr", DllStructGetPtr($struct_y))
 
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Local $ret[2] = [$struct_x.value, $struct_y.value]
 
 	Return $ret
 EndFunc
 Func _ImGui_GetKeyIndex($imgui_key)
 	Local $result = DllCall($IMGUI_DLL, "int:cdecl", "GetKeyIndex", "int", $imgui_key)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsKeyDown($user_key_index)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsKeyDown", "int", $user_key_index)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsKeyPressed($user_key_index, $repeat = true)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsKeyPressed", "int", $user_key_index, "boolean", $repeat)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsKeyReleased($user_key_index)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsKeyReleased", "int", $user_key_index)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_GetKeyPressedAmount($key_index, $repeat_delay, $repeat_rate)
 	Local $result = DllCall($IMGUI_DLL, "int:cdecl", "GetKeyPressedAmount", "int", $key_index, "float", $repeat_delay, "float", $repeat_rate)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_CaptureKeyboardFromApp($capture)
@@ -1780,37 +1779,37 @@ Func _ImGui_CaptureKeyboardFromApp($capture)
 EndFunc
 Func _ImGui_IsMouseDown($button = $ImGuiMouseButton_Left)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsMouseDown", "int", $button)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsMouseClicked($button = $ImGuiMouseButton_Left, $repeat = False)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsMouseClicked", "int", $button, "boolean", $repeat)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsMouseReleased($button = $ImGuiMouseButton_Left)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsMouseReleased", "int", $button)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsMouseHoveringRect($r_min_x, $r_min_y, $r_max_x, $r_max_y, $clip = True)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsMouseHoveringRect", "float", $r_min_x, "float", $r_min_y, "float", $r_max_x, "float", $r_max_y, "boolean", $clip)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsMousePosValid()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsMousePosValid")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsAnyMouseDown()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsAnyMouseDown")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_IsMouseDragging($button = $ImGuiMouseButton_Left, $lock_threshold = -1)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsMouseDragging", "int", $button, "float", $lock_threshold)
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_ResetMouseDragDelta($button = $ImGuiMouseButton_Left)
@@ -1818,7 +1817,7 @@ Func _ImGui_ResetMouseDragDelta($button = $ImGuiMouseButton_Left)
 EndFunc
 Func _ImGui_GetMouseCursor()
 	Local $result = DllCall($IMGUI_DLL, "int:cdecl", "GetMouseCursor")
-	If @error Then Return False
+	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
 Func _ImGui_SetMouseCursor($cursor_type = $ImGuiMouseCursor_Arrow)
@@ -1835,7 +1834,7 @@ Func _ImGui_SaveIniSettingsToDisk($ini_filename)
 EndFunc
 Func _ImGui_GetMainViewport()
 	local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetMainViewport")
-	If @error then return False
+	If @error Then Return SetError(1, 0, 0)
 
 	Local $struct = DllStructCreate($__tagImGuiViewport, $result[0])
 	return $struct
