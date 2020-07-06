@@ -2,7 +2,7 @@
 
 ### Info
 - ImGui is an open source library that make fancy User Interfaces, it's based on DirectX drawing. You can check it [here](https://github.com/ocornut/imgui)
-- It render frame by frame, of course, this is an advantage, it's more flexible to use.
+- It renders frame by frame, of course, this is an advantage, it's more flexible to use.
 - The hardest part I thought when I started writing this is: How am I gonna make it FAST?
 - When i finally put the code to work, suprisingly, it runs at max fps, you can create a thousands of items and it's still fine.
 
