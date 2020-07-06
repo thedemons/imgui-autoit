@@ -1,3 +1,3 @@
 
 ### Usage
-- Run this to add autocomplete functions for ImGui int SciTE
+- Run this to add autocomplete functions for ImGui in SciTE editor
