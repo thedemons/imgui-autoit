@@ -1,6 +1,6 @@
 # imgui-autoit
 
-### Intro
+### Introduction
 - ImGui is an open source library that make fancy User Interfaces based on DirectX lib, you can check it [here](https://github.com/ocornut/imgui)
 - It renders frame by frame, of course, this is an advantage, it's more flexible to use.
 - The hardest part I thought when I started writing this is: How am I gonna make it FAST? Because AutoIt is... you know, slow.
