@@ -8,7 +8,7 @@
 - So I decided to convert the whole ImGui library to AutoIt, function by function.
 
 ### Features
-- Has more than +260 functions converted from ImGui (compiled dll).
+- Has more than +270 functions converted from ImGui (compiled dll).
 - Has 90% of the capability of what you can do in C++.
 - Usable ImGuiIO and ImGuiStyle as a struct.
 
