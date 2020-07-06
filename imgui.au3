@@ -1870,10 +1870,10 @@ EndFunc
 Func _ImDraw_AddLine($p1_x, $p1_y, $p2_x, $p2_y, $col = 0xFFFFFFFF, $thickness = 1)
 	DllCall($IMGUI_DLL, "none:cdecl", "AddLine", "ptr", $ImDrawList_ptr, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "uint", $col, "float", $thickness)
 EndFunc
-Func _ImDraw_AddRect($x, $y, $w, $h, $col = 0xFFFFFFFF, $rounding = 0, $rounding_corners = $ImDrawCornerFlags_None, $thickness = 1)
+Func _ImDraw_AddRect($x, $y, $w, $h, $col = 0xFFFFFFFF, $rounding = 0, $rounding_corners = $ImDrawCornerFlags_All, $thickness = 1)
 	DllCall($IMGUI_DLL, "none:cdecl", "AddRect",  "ptr", $ImDrawList_ptr, "float", $x, "float", $y, "float", $x+$w, "float", $y+$h, "uint", $col, "float", $rounding, "int", $rounding_corners, "float", $thickness)
 EndFunc
-Func _ImDraw_AddRectFilled( $x, $y, $w, $h, $col = 0xFFFFFFFF, $rounding = 0, $rounding_corners = $ImDrawCornerFlags_None)
+Func _ImDraw_AddRectFilled( $x, $y, $w, $h, $col = 0xFFFFFFFF, $rounding = 0, $rounding_corners = $ImDrawCornerFlags_All)
 	DllCall($IMGUI_DLL, "none:cdecl", "AddRectFilled", "ptr", $ImDrawList_ptr, "float", $x, "float", $y, "float", $x+$w, "float", $y+$h, "uint", $col, "float", $rounding, "int", $rounding_corners)
 EndFunc
 Func _ImDraw_AddBezierCurve($p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $col = 0xFFFFFFFF, $thickness = 1, $num_segments = 30)
@@ -1911,7 +1911,7 @@ EndFunc
 Func _ImDraw_AddImageQuad($user_texture_id, $p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $uv1_x = 0, $uv1_y = 0, $uv2_x = 1, $uv2_y = 0, $uv3_x = 1, $uv3_y = 1, $uv4_x = 0, $uv4_y = 1, $col = 0xFFFFFFFF)
 	DllCall($IMGUI_DLL, "none:cdecl", "AddImageQuad", "ptr", $ImDrawList_ptr, "int", $user_texture_id, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "float", $p3_x, "float", $p3_y, "float", $p4_x, "float", $p4_y, "float", $uv1_x, "float", $uv1_y, "float", $uv2_x, "float", $uv2_y, "float", $uv3_x, "float", $uv3_y, "float", $uv4_x, "float", $uv4_y, "uint", $col)
 EndFunc
-Func _ImDraw_AddImageRounded($user_texture_id, $p_min_x, $p_min_y, $p_max_x, $p_max_y, $uv_min_x = 0, $uv_min_y = 0, $uv_max_x = 1, $uv_max_y = 1, $col = 0xFFFFFFFF, $rounding = 5, $rounding_corners = $ImDrawCornerFlags_None)
+Func _ImDraw_AddImageRounded($user_texture_id, $p_min_x, $p_min_y, $p_max_x, $p_max_y, $uv_min_x = 0, $uv_min_y = 0, $uv_max_x = 1, $uv_max_y = 1, $col = 0xFFFFFFFF, $rounding = 5, $rounding_corners = $ImDrawCornerFlags_All)
 	DllCall($IMGUI_DLL, "none:cdecl", "AddImageRounded", "ptr", $ImDrawList_ptr, "int", $user_texture_id, "float", $p_min_x, "float", $p_min_y, "float", $p_max_x, "float", $p_max_y, "float", $uv_min_x, "float", $uv_min_y, "float", $uv_max_x, "float", $uv_max_y, "uint", $col, "float", $rounding, "int", $rounding_corners)
 EndFunc
 Func _ImDraw_AddNgon($center_x, $center_y, $radius, $col = 0xFFFFFFFF, $num_segments = 5, $thickness = 1)
@@ -1979,4 +1979,45 @@ Func _ImDraw_PathBezierCurveTo($p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $num_se
 EndFunc
 Func _ImDraw_PathRect($rect_min_x, $rect_min_y, $rect_max_x, $rect_max_y, $rounding = 0, $rounding_corners = $ImDrawCornerFlags_All)
 	DllCall($IMGUI_DLL, "none:cdecl", "PathRect", "ptr", $ImDrawList_ptr, "float", $rect_min_x, "float", $rect_min_y, "float", $rect_max_x, "float", $rect_max_y, "float", $rounding, "int", $rounding_corners)
+EndFunc
+
+Func _ImDraw_AddImageFit($user_texture_id, $pos_x, $pos_y, $size_x, $size_y, $crop_area = True, $rounding = 0, $tint_col = 0xFFFFFFFF, $rounding_corners = $ImDrawCornerFlags_All)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddImageFit", _
+	"ptr", $ImDrawList_ptr, _
+	"ptr", $user_texture_id, _
+	"float", $pos_x, _
+	"float", $pos_y, _
+	"float", $size_x, _
+	"float", $size_y, _
+	"boolean", $crop_area, _
+	"float", $rounding, _
+	"uint", $tint_col, _
+	"int", $rounding_corners)
+EndFunc
+
+Func _ImGui_ImageFit($user_texture_id, $size_x, $size_y, $tint_col = 0xFFFFFFFF, $border_col = 0x0)
+	DllCall($IMGUI_DLL, "none:cdecl", "ImageFit", "ptr", $user_texture_id, "float", $size_x, "float", $size_y, "int", $tint_col, "int", $border_col)
+EndFunc
+
+Func _ImGui_ImageFromFile($file_path)
+	local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "ImageFromFile", "wstr", $file_path)
+	If @error Then Return SetError(1, 0, 0)
+	Return $result[0]
+EndFunc
+
+Func _ImGui_ImageFromURL($url)
+	local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "ImageFromURL", "str", $url)
+	If @error Then Return SetError(1, 0, 0)
+	Return $result[0]
+EndFunc
+
+Func _ImGui_ImageGetSize($user_texture_id)
+	If $user_texture_id = 0 Then Return SetError(1, 0, 0)
+
+	Local $struct_x = DllStructCreate("float value;")
+	Local $struct_y = DllStructCreate("float value;")
+	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "ImageGetSize", "ptr", $user_texture_id, "ptr", DllStructGetPtr($struct_x),"ptr", DllStructGetPtr($struct_y))
+	If @error Then Return SetError(1, 0, 0)
+	Local $ret[2] = [$struct_x.value, $struct_y.value]
+	Return $ret
 EndFunc

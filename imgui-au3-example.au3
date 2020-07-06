@@ -37,9 +37,6 @@ While 1
 	; must call
 	_ImGui_BeginFrame()
 
-	; Set next window min/max size [380, 180] -> [600, 360]
-	_ImGui_SetNextWindowSizeConstraints(300, 180, 600, 360)
-
 	; Begin a new window
 	_ImGui_Begin("Demo ImGui-AutoIt")
 
@@ -84,8 +81,20 @@ While 1
 
 
 	Local $winSize = _ImGui_GetWindowSize()
+
 	_ImGui_Separator()
 
+	; Download an image
+	Local $img = _ImGui_ImageFromURL("https://aommaster.com/blog/wp-content/uploads/2014/07/AutoItlogo.png")
+	If $img Then
+
+		; Get window size 
+		Local $win_size = _ImGui_GetWindowSize()
+		
+		; Draw the image
+		_ImGui_ImageFit($img, $win_size[0] - 10, 140)
+	EndIf
+	
 	_ImGui_NewLine()
 
 	If _ImGui_CheckBox("Show demo window", $b_show_demo_window) Then _ImGui_EnableViewports($b_show_demo_window)
