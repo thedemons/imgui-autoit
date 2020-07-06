@@ -6,7 +6,7 @@
 
 Local $__imgui_dllpath = @TempDir & "\temp-data-" & TimerInit() & ".tmp"
 
-If Not FileInstall(@AutoItX64 ? "imgui_64.dll" : "imgui.dll", $__imgui_dllpath) Then
+If Not FileInstall("imgui.dll", $__imgui_dllpath) Then
 	MsgBox(16, "Error", "Cannot find imgui.dll")
 	Exit
 EndIf
@@ -25,21 +25,196 @@ Func Shutdown_()
 	DllClose($IMGUI_DLL)
 	FileDelete($__imgui_dllpath)
 EndFunc
-
 Func _ImGui_ShutDown()
 	DllCall($IMGUI_DLL, "none:cdecl", "ShutDown")
 EndFunc
-
-
-Global $ImDrawList_ptr = 0, $ImDraw_offset_x = 0, $ImDraw_offset_y = 0
-
-
 Func _GetStructArrayValue($struct, $index, $index_array)
 	Return DllStructGetData($struct, $index, $index_array + 1)
 EndFunc
 Func _SetStructArrayValue($struct, $index, $index_array, $value)
 	Return DllStructSetData($struct, $index, $value, $index_array + 1)
 EndFunc
+
+
+
+;//------------------------------------------------------------------
+;// Configuration (fill once)                // Default value
+;//------------------------------------------------------------------
+
+Global Const $__tagImGuiIO = "int ConfigFlags;" & _             ; = 0              // See ImGuiConfigFlags_ enum. Set by user/application. Gamepad/keyboard navigation options, etc.
+	"int BackendFlags;" & _            ; = 0              // See ImGuiBackendFlags_ enum. Set by back-end (imgui_impl_xxx files or custom back-end) to communicate features supported by the back-end.
+	"float DisplaySize_x;" & _			; <unset>          ; Main display size, in pixels. This is for the default viewport.
+	"float DisplaySize_y;" & _
+	"float DeltaTime;" & _						; = 1.0f/60.0f     ; Time elapsed since last frame, in seconds.
+	"float IniSavingRate;" & _					; = 5.0f           ; Minimum time between saving positions/sizes to .ini file, in seconds.
+	"ptr IniFilename;" & _						; = "imgui.ini"    ; Path to .ini file. Set NULL to disable automatic .ini loading/saving, if e.g. you want to manually load/save from memory.
+	"ptr LogFilename;" & _						; = "imgui_log.txt"; Path to .log file (default parameter to ImGui::LogToFile when no file is specified).
+	"float MouseDoubleClickTime;" & _			; = 0.30f          ; Time for a double-click, in seconds.
+	"float MouseDoubleClickMaxDist;" & _		; = 6.0f           ; Distance threshold to stay in to validate a double-click, in pixels.
+	"float MouseDragThreshold;" & _				; = 6.0f           ; Distance threshold before considering we are dragging.
+	"int KeyMap[22];" & _						; <unset>          ; Map of indices into the KeysDown[512] entries array which represent your "native" keyboard state.
+	"float KeyRepeatDelay;" & _					; = 0.250f         ; When holding a key/button, time before it starts repeating, in seconds (for buttons in Repeat mode, etc.).
+	"float KeyRepeatRate;" & _					; = 0.050f         ; When holding a key/button, rate at which it repeats, in seconds.
+	"ptr UserData;" & _							; = NULL           ; Store your own data for retrieval by callbacks.
+	""& _
+	"ptr Fonts;" & _							; <auto>           ; Font atlas: load, rasterize and pack one or more fonts into a single texture.
+	"float FontGlobalScale;" & _				; = 1.0f           ; Global scale all fonts
+	"boolean FontAllowUserScaling;" & _			; = false          ; Allow user scaling text of individual window with CTRL+Wheel.
+	"ptr FontDefault;" & _						; = NULL           ; Font to use on NewFrame(). Use NULL to uses Fonts->Fonts[0].
+	"float DisplayFramebufferScale_x;" & _		; = (1, 1)         ; For retina display or other situations where window coordinates are different from framebuffer coordinates. This generally ends up in ImDrawData::FramebufferScale.
+	"float DisplayFramebufferScale_y;" & _
+	""& _
+	""& _ ; Docking options (when ImGuiConfigFlags_DockingEnable is set)
+	"boolean ConfigDockingNoSplit;" & _ 			; = false          ; Simplified docking mode: disable window splitting, so docking is limited to merging multiple windows together into tab-bars.
+	"boolean ConfigDockingWithShift;" & _			; = false          ; Enable docking with holding Shift key (reduce visual noise, allows dropping in wider space)
+	"boolean ConfigDockingAlwaysTabBar;" & _		; = false          ; [BETA] [FIXME: This currently creates regression with auto-sizing and general overhead] Make every single floating window display within a docking node.
+	"boolean ConfigDockingTransparentPayload;" & _	; = false          ; [BETA] Make window or viewport transparent when docking and only display docking boxes on the target viewport. Useful if rendering of multiple viewport cannot be synced. Best used with ConfigViewportsNoAutoMerge.
+	""& _
+	""& _ ; Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
+	"boolean ConfigViewportsNoAutoMerge;" & _		; = false;         ; Set to make all floating imgui windows always create their own viewport. Otherwise, they are merged into the main host viewports when overlapping it. May also set ImGuiViewportFlags_NoAutoMerge on individual viewport.
+	"boolean ConfigViewportsNoTaskBarIcon;" & _		; = false          ; Disable default OS task bar icon flag for secondary viewports. When a viewport doesn't want a task bar icon, ImGuiViewportFlags_NoTaskBarIcon will be set on it.
+	"boolean ConfigViewportsNoDecoration;" & _		; = true           ; [BETA] Disable default OS window decoration flag for secondary viewports. When a viewport doesn't want window decorations, ImGuiViewportFlags_NoDecoration will be set on it. Enabling decoration can create subsequent issues at OS levels (e.g. minimum window size).
+	"boolean ConfigViewportsNoDefaultParent;" & _	; = false          ; Disable default OS parenting to main viewport for secondary viewports. By default, viewports are marked with ParentViewportId = <main_viewport>, expecting the platform back-end to setup a parent/child relationship between the OS windows (some back-end may ignore this). Set to true if you want the default to be 0, then all viewports will be top-level OS windows.
+	""& _
+	"boolean MouseDrawCursor;" & _ 					; = false          ; Request ImGui to draw a mouse cursor for you (if you are on a platform without a mouse cursor). Cannot be easily renamed to 'io.ConfigXXX' because this is frequently used by back-end implementations.
+	"boolean ConfigMacOSXBehaviors;" & _			; = defined(__APPLE__) ; OS X style: Text editing cursor movement using Alt instead of Ctrl, Shortcuts using Cmd/Super instead of Ctrl, Line/Text Start and End using Cmd+Arrows instead of Home/End, Double click selects by word instead of selecting whole text, Multi-selection in lists uses Cmd/Super instead of Ctrl (was called io.OptMacOSXBehaviors prior to 1.63)
+	"boolean ConfigInputTextCursorBlink;" & _		; = true           ; Set to false to disable blinking cursor, for users who consider it distracting. (was called: io.OptCursorBlink prior to 1.63)
+	"boolean ConfigWindowsResizeFromEdges;" & _		; = true           ; Enable resizing of windows from their edges and from the lower-left corner. This requires (io.BackendFlags & ImGuiBackendFlags_HasMouseCursors) because it needs mouse cursor feedback. (This used to be a per-window ImGuiWindowFlags_ResizeFromAnySide flag)
+	"boolean ConfigWindowsMoveFromTitleBarOnly;" & _; = false       ; [BETA] Set to true to only allow moving windows when clicked+dragged from the title bar. Windows without a title bar are not affected.
+	"float ConfigWindowsMemoryCompactTimer;" & _	; = 60.0f          ; [BETA] Compact window memory usage when unused. Set to -1.0f to disable.
+	""& _
+	"ptr BackendPlatformName;" & _		; = NULL
+	"ptr BackendRendererName;" & _		; = NULL
+	"ptr BackendPlatformUserData;" & _	; = NULL           ; User data for platform back-end
+	"ptr BackendRendererUserData;" & _	; = NULL           ; User data for renderer back-end
+	"ptr BackendLanguageUserData;" & _	; = NULL           ; User data for non C++ programming language back-end
+	""& _
+	"ptr GetClipboardTextFn;" & _
+	"ptr SetClipboardTextFn;" & _
+	"ptr ClipboardUserData;" & _
+	"ptr RenderDrawListsFnUnused;" & _
+	"float MousePos_x;" & _					; Mouse position, in pixels. Set to ImVec2(-FLT_MAX, -FLT_MAX) if mouse is unavailable (on another screen, etc.)
+	"float MousePos_y;" & _					; = NULL           ; User data for non C++ programming language back-end
+	"boolean MouseDown[5];" & _				; Mouse buttons: 0=left, 1=right, 2=middle + extras (ImGuiMouseButton_COUNT == 5). Dear ImGui mostly uses left and right buttons. Others buttons allows us to track if the mouse is being used by your application + available to user as a convenience via IsMouse** API.
+	"float MouseWheel;" & _					; Mouse wheel Vertical: 1 unit scrolls about 5 lines text.
+	"float MouseWheelH;" & _				; Mouse wheel Horizontal. Most users don't have a mouse with an horizontal wheel, may not be filled by all back-ends.
+	"uint MouseHoveredViewport;" & _		; (Optional) When using multiple viewports: viewport the OS mouse cursor is hovering _IGNORING_ viewports with the ImGuiViewportFlags_NoInputs flag, and _REGARDLESS_ of whether another viewport is focused. Set io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport if you can provide this info. If you don't imgui will infer the value using the rectangles and last focused time of the viewports it knows about (ignoring other OS windows).
+	"boolean KeyCtrl;" & _					; Keyboard modifier pressed: Control
+	"boolean KeyShift;" & _					; Keyboard modifier pressed: Shift
+	"boolean KeyAlt;" & _					; Keyboard modifier pressed: Alt
+	"boolean KeySuper;" & _					; Keyboard modifier pressed: Cmd/Super/Windows
+	"boolean KeysDown[512];" & _			; Keyboard keys that are pressed (ideally left in the "native" order your engine has access to keyboard keys, so you can use your own defines/enums for keys).
+	"float NavInputs[21];" & _				; Gamepad inputs. Cleared back to zero by EndFrame(). Keyboard keys will be auto-mapped and be written here by NewFrame().
+	""& _
+	""& _ ; mouse and keyboard
+	"boolean WantCaptureMouse;" & _			; Set when Dear ImGui will use mouse inputs, in this case do not dispatch them to your main game/application (either way, always pass on mouse inputs to imgui). (e.g. unclicked mouse is hovering over an imgui window, widget is active, mouse was clicked over an imgui window, etc.).
+	"boolean WantCaptureKeyboard;" & _		; Set when Dear ImGui will use keyboard inputs, in this case do not dispatch them to your main game/application (either way, always pass keyboard inputs to imgui). (e.g. InputText active, or an imgui window is focused and navigation is enabled, etc.).
+	"boolean WantTextInput;" & _			; Mobile/console: when set, you may display an on-screen keyboard. This is set by Dear ImGui when it wants textual keyboard input to happen (e.g. when a InputText widget is active).
+	"boolean WantSetMousePos;" & _			; MousePos has been altered, back-end should reposition mouse on next frame. Rarely used! Set only when ImGuiConfigFlags_NavEnableSetMousePos flag is enabled.
+	"boolean WantSaveIniSettings;" & _		; When manual .ini load/save is active (io.IniFilename == NULL), this will be set to notify your application that you can call SaveIniSettingsToMemory() and save yourself. Important: clear io.WantSaveIniSettings yourself after saving!
+	"boolean NavActive;" & _				; Keyboard/Gamepad navigation is currently allowed (will handle ImGuiKey_NavXXX events) = a window is focused and it doesn't use the ImGuiWindowFlags_NoNavInputs flag.
+	"boolean NavVisible;" & _				; Keyboard/Gamepad navigation is visible and allowed (will handle ImGuiKey_NavXXX events).
+	"float Framerate;" & _					; Application framerate estimate, in frame per second. Solely for convenience. Rolling average estimation based on io.DeltaTime over 120 frames.
+	"int MetricsRenderVertices;" & _		; Vertices output during last call to Render()
+	"int MetricsRenderIndices;" & _			; Indices output during last call to Render() = number of triangles * 3
+	"int MetricsRenderWindows;" & _			; Number of visible windows
+	"int MetricsActiveWindows;" & _			; Number of active windows
+	"int MetricsActiveAllocations;" & _		; Number of active allocations, updated by MemAlloc/MemFree based on current context. May be off if you have multiple imgui contexts.
+	"float MouseDelta_x;" & _				; Mouse delta. Note that this is zero if either current or previous position are invalid (-FLT_MAX,-FLT_MAX), so a disappearing/reappearing mouse won't have a huge delta.
+	"float MouseDelta_y;" & _				; Gamepad inputs. Cleared back to zero by EndFrame(). Keyboard keys will be auto-mapped and be written here by NewFrame().
+	""& _
+	""& _
+	"int KeyMods;" & _								; Key mods flags (same as io.KeyCtrl/KeyShift/KeyAlt/KeySuper but merged into flags), updated by NewFrame()
+	"float MousePosPrev_x;" & _						; Previous mouse position (note that MouseDelta is not necessary == MousePos-MousePosPrev, in case either position is invalid)
+	"float MousePosPrev_y;" & _
+	"float MouseClickedPos[10];" & _				; Position at time of clicking
+	"double MouseClickedTime[5];" & _				; Time of last click (used to figure out double-click)
+	"boolean MouseClicked[5];" & _					; Mouse button went from !Down to Down
+	"boolean MouseDoubleClicked[5];" & _			; Has mouse button been double-clicked?
+	"boolean MouseReleased[5];" & _					; Mouse button went from Down to !Down
+	"boolean MouseDownOwned[5];" & _				; Track if button down was a double-click
+	"boolean MouseDownWasDoubleClick[5];" & _		; Track if button was clicked inside a dear imgui window. We don't request mouse capture from the application if click started outside ImGui bounds.
+	"float MouseDownDuration[5];" & _				; Duration the mouse button has been down (0.0f == just clicked)
+	"float MouseDownDurationPrev[5];" & _			; Previous time the mouse button has been down
+	"float MouseDragMaxDistanceAbs[10];" & _		; Maximum distance, absolute, on each axis, of how much mouse has traveled from the clicking point
+	"float MouseDragMaxDistanceSqr[5];" & _			; Squared maximum distance of how much mouse has traveled from the clicking point
+	"float KeysDownDuration[512];" & _				; Duration the keyboard key has been down (0.0f == just pressed)
+	"float KeysDownDurationPrev[512];" & _			; Previous duration the key has been down
+	"float NavInputsDownDuration[21];" & _
+	"float NavInputsDownDurationPrev[21];" & _
+	"float PenPressure;" & _						; Touch/Pen pressure (0.0f to 1.0f, should be >0.0f only when MouseDown[0] == true). Helper storage currently unused by Dear ImGui.
+	"ushort InputQueueSurrogate;"					; For AddInputCharacterUTF16
+
+Global $__tagImGuiStyle = _
+	"float Alpha;" & _								;  Global alpha applies to everything in Dear ImGui.
+	"float WindowPadding_x;" & _					;  Padding within a window.
+	"float WindowPadding_y;" & _
+	"float WindowRounding;" & _						;  Radius of window corners rounding. Set to 0.0f to have rectangular windows. Large values tend to lead to variety of artifacts and are not recommended.
+	"float WindowBorderSize;" & _					;  Thickness of border around windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+	"float WindowMinSize_x;" & _					;  Minimum window size. This is a global setting. If you want to constraint individual windows, use SetNextWindowSizeConstraints().
+	"float WindowMinSize_y;" & _
+	"float WindowTitleAlign_x;" & _					;  Alignment for title bar text. Defaults to (0.0f,0.5f) for left-aligned,vertically centered.
+	"float WindowTitleAlign_y;" & _
+	"int WindowMenuButtonPosition;" & _				;  Side of the collapsing/docking button in the title bar (None/Left/Right). Defaults to ImGuiDir_Left.
+	"float ChildRounding;" & _						;  Radius of child window corners rounding. Set to 0.0f to have rectangular windows.
+	"float ChildBorderSize;" & _					;  Thickness of border around child windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+	"float PopupRounding;" & _						;  Radius of popup window corners rounding. (Note that tooltip windows use WindowRounding)
+	"float PopupBorderSize;" & _					;  Thickness of border around popup/tooltip windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+	"float FramePadding_x;" & _						;  Padding within a framed rectangle (used by most widgets).
+	"float FramePadding_y;" & _
+	"float FrameRounding;" & _						;  Radius of frame corners rounding. Set to 0.0f to have rectangular frame (used by most widgets).
+	"float FrameBorderSize;" & _					;  Thickness of border around frames. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+	"float ItemSpacing_x;" & _						;  Horizontal and vertical spacing between widgets/lines.
+	"float ItemSpacing_y;" & _
+	"float ItemInnerSpacing_x;" & _					;  Horizontal and vertical spacing between within elements of a composed widget (e.g. a slider and its label).
+	"float ItemInnerSpacing_y;" & _
+	"float TouchExtraPadding_x;" & _				;  Expand reactive bounding box for touch-based system where touch position is not accurate enough. Unfortunately we don't sort widgets so priority on overlap will always be given to the first widget. So don't grow this too much!
+	"float TouchExtraPadding_y;" & _
+	"float IndentSpacing;" & _						;  Horizontal indentation when e.g. entering a tree node. Generally == (FontSize + FramePadding.x*2).
+	"float ColumnsMinSpacing;" & _					;  Minimum horizontal spacing between two columns. Preferably > (FramePadding.x + 1).
+	"float ScrollbarSize;" & _						;  Width of the vertical scrollbar, Height of the horizontal scrollbar.
+	"float ScrollbarRounding;" & _					;  Radius of grab corners for scrollbar.
+	"float GrabMinSize;" & _						;  Minimum width/height of a grab box for slider/scrollbar.
+	"float GrabRounding;" & _						;  Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
+	"float TabRounding;" & _						;  Radius of upper corners of a tab. Set to 0.0f to have rectangular tabs.
+	"float TabBorderSize;" & _							;  Thickness of border around tabs.
+	"float TabMinWidthForUnselectedCloseButton;" & _	;  Minimum width for close button to appears on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
+	"int ColorButtonPosition;" & _						;  Side of the color button in the ColorEdit4 widget (left/right). Defaults to ImGuiDir_Right.
+	"float ButtonTextAlign_x;" & _					;  Alignment of button text when button is larger than text. Defaults to (0.5f, 0.5f) (centered).
+	"float ButtonTextAlign_y;" & _
+	"float SelectableTextAlign_x;" & _				;  Alignment of selectable text. Defaults to (0.0f, 0.0f) (top-left aligned). It's generally important to keep this left-aligned if you want to lay multiple items on a same line.
+	"float SelectableTextAlign_y;" & _
+	"float DisplayWindowPadding_x;" & _				;  Window position are clamped to be visible within the display area or monitors by at least this amount. Only applies to regular windows.
+	"float DisplayWindowPadding_y;" & _
+	"float DisplaySafeAreaPadding_x;" & _			;  If you cannot see the edges of your screen (e.g. on a TV) increase the safe area padding. Apply to popups/tooltips as well regular windows. NB: Prefer configuring your TV sets correctly!
+	"float DisplaySafeAreaPadding_y;" & _
+	"float MouseCursorScale;" & _					;  Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). We apply per-monitor DPI scaling over this scale. May be removed later.
+	"boolean AntiAliasedLines;" & _					;  Enable anti-aliasing on lines/borders. Disable if you are really tight on CPU/GPU.
+	"boolean AntiAliasedFill;" & _					;  Enable anti-aliasing on filled shapes (rounded rectangles, circles, etc.)
+	"float CurveTessellationTol;" & _				;  Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
+	"float CircleSegmentMaxError;"					;  Maximum error (in pixels) allowed when using AddCircle()/AddCircleFilled() or drawing rounded corner rectangles with no explicit segment count specified. Decrease for higher quality but more geometry.
+
+Global Const $__tagImGuiViewport = _
+	"int ID;" & _									;  Unique identifier for the viewport
+	"int Flags;" & _								;  See ImGuiViewportFlags_
+	"float Pos_x;" & _								;  Main Area: Position of the viewport (the imgui coordinates are the same as OS desktop/native coordinates)
+	"float Pos_y;" & _
+	"float Size_x;" & _								;  Main Area: Size of the viewport.
+	"float Size_y;" & _
+	"float WorkOffsetMin_x;" & _					;  Work Area: Offset from Pos to top-left corner of Work Area. Generally (0,0) or (0,+main_menu_bar_height). Work Area is Full Area but without menu-bars/status-bars (so WorkArea always fit inside Pos/Size!)
+	"float WorkOffsetMin_y;" & _
+	"float WorkOffsetMax_x;" & _					;  Work Area: Offset from Pos+Size to bottom-right corner of Work Area. Generally (0,0) or (0,-status_bar_height).
+	"float WorkOffsetMax_y;" & _
+	"float DpiScale;" & _							;  1.0f = 96 DPI = No extra scale.
+	"ptr DrawData;" & _								;  The ImDrawData corresponding to this viewport. Valid after Render() and until the next call to NewFrame().
+	"int ParentViewportId;" & _						;  (Advanced) 0: no parent. Instruct the platform back-end to setup a parent/child relationship between platform windows.
+	"ptr RendererUserData;" & _						;  void* to hold custom data structure for the renderer (e.g. swap chain, framebuffers etc.). generally set by your Renderer_CreateWindow function.
+	"ptr PlatformUserData;" & _						;  void* to hold custom data structure for the OS / platform (e.g. windowing info, render context). generally set by your Platform_CreateWindow function.
+	"ptr PlatformHandle;" & _						;  void* for FindViewportByPlatformHandle(). (e.g. suggested to use natural platform handle such as HWND, GLFWWindow*, SDL_Window*)
+	"ptr PlatformHandleRaw;" & _					;  void* to hold lower-level, platform-native window handle (e.g. the HWND) when using an abstraction layer like GLFW or SDL (where PlatformHandle would be a SDL_Window*)
+	"boolean PlatformRequestMove;" & _				;  Platform window requested move (e.g. window was moved by the OS / host window manager, authoritative position will be OS window position)
+	"boolean PlatformRequestResize;" & _			;  Platform window requested resize (e.g. window was resized by the OS / host window manager, authoritative size will be OS window size)
+	"boolean PlatformRequestClose;" 				;  Platform window requested closure (e.g. window was moved by the OS / host window manager, e.g. pressing ALT-F4)
 
 Global Const $FLT_MAX         				          =  3.402823466e+38
 
@@ -653,10 +828,10 @@ EndFunc
 Func _ImGui_GetWindowSize()
 	Return ___ImGui_RecvImVec2("none:cdecl", "GetWindowSize")
 EndFunc
-Func _ImGui_SetNextWindowPos($x, $y, $cond = 0, $pivot_x = 0, $pivot_y = 0)
+Func _ImGui_SetNextWindowPos($x, $y, $cond = $ImGuiCond_None, $pivot_x = 0, $pivot_y = 0)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowPos", "float", $x, "float", $y, "int", $cond, "float", $pivot_x, "float", $pivot_y)
 EndFunc
-Func _ImGui_SetNextWindowSize($x, $y, $cond = 0)
+Func _ImGui_SetNextWindowSize($x, $y, $cond = $ImGuiCond_None)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowSize", "float", $x, "float", $y, "int", $cond)
 EndFunc
 Func _ImGui_SetNextWindowSizeConstraints($size_min_x, $size_min_y, $size_max_x, $size_max_y)
@@ -666,7 +841,7 @@ EndFunc
 Func _ImGui_SetNextWindowContentSize($size_x, $size_y)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowContentSize", "float", $size_x, "float", $size_y)
 EndFunc
-Func _ImGui_SetNextWindowCollapsed($collapsed, $cond = 0)
+Func _ImGui_SetNextWindowCollapsed($collapsed, $cond = $ImGuiCond_None)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowCollapsed", "boolean", $collapsed, "int", $cond)
 EndFunc
 Func _ImGui_SetNextWindowFocus()
@@ -674,7 +849,9 @@ Func _ImGui_SetNextWindowFocus()
 EndFunc
 Func _ImGui_SetNextWindowBgAlpha($alpha)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowBgAlpha", "float", $alpha)
-
+EndFunc
+Func _ImGui_SetNextWindowViewport($id)
+	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowViewport", "int", $id)
 EndFunc
 Func _ImGui_SetWindowPos($pos_x, $pos_y, $cond=0)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetWindowPosition", "float", $pos_x, "float", $pos_y, "int", $cond)
@@ -683,7 +860,7 @@ Func _ImGui_SetWindowSize($size_x, $size_y, $cond=0)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetWindowSize", "float", $size_x, "float", $size_y, "int", $cond)
 EndFunc
 
-Func _ImGui_SetWindowCollapsed($collapsed, $cond = 0)
+Func _ImGui_SetWindowCollapsed($collapsed, $cond = $ImGuiCond_None)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetWindowCollapsed", "boolean", $collapsed, "int", $cond)
 EndFunc
 
@@ -694,15 +871,15 @@ EndFunc
 Func _ImGui_SetWindowFontScale($scale)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetWindowFontScale", "float", $scale)
 EndFunc
-Func _ImGui_SetWindowPosByName($name, $pos_x, $pos_y, $cond = 0)
+Func _ImGui_SetWindowPosByName($name, $pos_x, $pos_y, $cond = $ImGuiCond_None)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetWindowPosByName", "wstr", $name, "float", $pos_x, "float", $pos_y, "int", $cond)
 EndFunc
 
-Func _ImGui_SetWindowSizeByName($name, $size_x, $size_y, $cond = 0)
+Func _ImGui_SetWindowSizeByName($name, $size_x, $size_y, $cond = $ImGuiCond_None)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetWindowSizeByName", "wstr", $name, "float", $size_x, "float", $size_y, "int", $cond)
 EndFunc
 
-Func _ImGui_SetWindowCollapsedByName($name, $collapsed, $cond = 0)
+Func _ImGui_SetWindowCollapsedByName($name, $collapsed, $cond = $ImGuiCond_None)
 	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "SetWindowCollapsedByName", "wstr", $name, "boolean", $collapsed, "int", $cond)
 
 	If @error Then Return SetError(1, 0, 0)
@@ -800,7 +977,7 @@ EndFunc
 Func _ImGui_SetScrollHereX($center_x_ratio = 0.5)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetScrollHereX", "float", $center_x_ratio)
 EndFunc
-Func _ImGui_SetScrollHereY($center_y_ratio)
+Func _ImGui_SetScrollHereY($center_y_ratio = 0.5)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetScrollHereY", "float", $center_y_ratio)
 EndFunc
 Func _ImGui_SetScrollFromPosX($local_x, $center_x_ratio = 0.5)
@@ -1034,187 +1211,6 @@ Func _ImGui_EndCombo()
 	DllCall($IMGUI_DLL, "none:cdecl", "EndCombo")
 EndFunc
 
-
-
-
-;//------------------------------------------------------------------
-;// Configuration (fill once)                // Default value
-;//------------------------------------------------------------------
-
-Global Const $__tagImGuiIO = "int ConfigFlags;" & _             ; = 0              // See ImGuiConfigFlags_ enum. Set by user/application. Gamepad/keyboard navigation options, etc.
-	"int BackendFlags;" & _            ; = 0              // See ImGuiBackendFlags_ enum. Set by back-end (imgui_impl_xxx files or custom back-end) to communicate features supported by the back-end.
-	"float DisplaySize_x;" & _			; <unset>          ; Main display size, in pixels. This is for the default viewport.
-	"float DisplaySize_y;" & _
-	"float DeltaTime;" & _						; = 1.0f/60.0f     ; Time elapsed since last frame, in seconds.
-	"float IniSavingRate;" & _					; = 5.0f           ; Minimum time between saving positions/sizes to .ini file, in seconds.
-	"ptr IniFilename;" & _						; = "imgui.ini"    ; Path to .ini file. Set NULL to disable automatic .ini loading/saving, if e.g. you want to manually load/save from memory.
-	"ptr LogFilename;" & _						; = "imgui_log.txt"; Path to .log file (default parameter to ImGui::LogToFile when no file is specified).
-	"float MouseDoubleClickTime;" & _			; = 0.30f          ; Time for a double-click, in seconds.
-	"float MouseDoubleClickMaxDist;" & _		; = 6.0f           ; Distance threshold to stay in to validate a double-click, in pixels.
-	"float MouseDragThreshold;" & _				; = 6.0f           ; Distance threshold before considering we are dragging.
-	"int KeyMap[22];" & _						; <unset>          ; Map of indices into the KeysDown[512] entries array which represent your "native" keyboard state.
-	"float KeyRepeatDelay;" & _					; = 0.250f         ; When holding a key/button, time before it starts repeating, in seconds (for buttons in Repeat mode, etc.).
-	"float KeyRepeatRate;" & _					; = 0.050f         ; When holding a key/button, rate at which it repeats, in seconds.
-	"ptr UserData;" & _							; = NULL           ; Store your own data for retrieval by callbacks.
-	""& _
-	"ptr Fonts;" & _							; <auto>           ; Font atlas: load, rasterize and pack one or more fonts into a single texture.
-	"float FontGlobalScale;" & _				; = 1.0f           ; Global scale all fonts
-	"boolean FontAllowUserScaling;" & _			; = false          ; Allow user scaling text of individual window with CTRL+Wheel.
-	"ptr FontDefault;" & _						; = NULL           ; Font to use on NewFrame(). Use NULL to uses Fonts->Fonts[0].
-	"float DisplayFramebufferScale_x;" & _		; = (1, 1)         ; For retina display or other situations where window coordinates are different from framebuffer coordinates. This generally ends up in ImDrawData::FramebufferScale.
-	"float DisplayFramebufferScale_y;" & _
-	""& _
-	""& _ ; Docking options (when ImGuiConfigFlags_DockingEnable is set)
-	"boolean ConfigDockingNoSplit;" & _ 			; = false          ; Simplified docking mode: disable window splitting, so docking is limited to merging multiple windows together into tab-bars.
-	"boolean ConfigDockingWithShift;" & _			; = false          ; Enable docking with holding Shift key (reduce visual noise, allows dropping in wider space)
-	"boolean ConfigDockingAlwaysTabBar;" & _		; = false          ; [BETA] [FIXME: This currently creates regression with auto-sizing and general overhead] Make every single floating window display within a docking node.
-	"boolean ConfigDockingTransparentPayload;" & _	; = false          ; [BETA] Make window or viewport transparent when docking and only display docking boxes on the target viewport. Useful if rendering of multiple viewport cannot be synced. Best used with ConfigViewportsNoAutoMerge.
-	""& _
-	""& _ ; Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
-	"boolean ConfigViewportsNoAutoMerge;" & _		; = false;         ; Set to make all floating imgui windows always create their own viewport. Otherwise, they are merged into the main host viewports when overlapping it. May also set ImGuiViewportFlags_NoAutoMerge on individual viewport.
-	"boolean ConfigViewportsNoTaskBarIcon;" & _		; = false          ; Disable default OS task bar icon flag for secondary viewports. When a viewport doesn't want a task bar icon, ImGuiViewportFlags_NoTaskBarIcon will be set on it.
-	"boolean ConfigViewportsNoDecoration;" & _		; = true           ; [BETA] Disable default OS window decoration flag for secondary viewports. When a viewport doesn't want window decorations, ImGuiViewportFlags_NoDecoration will be set on it. Enabling decoration can create subsequent issues at OS levels (e.g. minimum window size).
-	"boolean ConfigViewportsNoDefaultParent;" & _	; = false          ; Disable default OS parenting to main viewport for secondary viewports. By default, viewports are marked with ParentViewportId = <main_viewport>, expecting the platform back-end to setup a parent/child relationship between the OS windows (some back-end may ignore this). Set to true if you want the default to be 0, then all viewports will be top-level OS windows.
-	""& _
-	"boolean MouseDrawCursor;" & _ 					; = false          ; Request ImGui to draw a mouse cursor for you (if you are on a platform without a mouse cursor). Cannot be easily renamed to 'io.ConfigXXX' because this is frequently used by back-end implementations.
-	"boolean ConfigMacOSXBehaviors;" & _			; = defined(__APPLE__) ; OS X style: Text editing cursor movement using Alt instead of Ctrl, Shortcuts using Cmd/Super instead of Ctrl, Line/Text Start and End using Cmd+Arrows instead of Home/End, Double click selects by word instead of selecting whole text, Multi-selection in lists uses Cmd/Super instead of Ctrl (was called io.OptMacOSXBehaviors prior to 1.63)
-	"boolean ConfigInputTextCursorBlink;" & _		; = true           ; Set to false to disable blinking cursor, for users who consider it distracting. (was called: io.OptCursorBlink prior to 1.63)
-	"boolean ConfigWindowsResizeFromEdges;" & _		; = true           ; Enable resizing of windows from their edges and from the lower-left corner. This requires (io.BackendFlags & ImGuiBackendFlags_HasMouseCursors) because it needs mouse cursor feedback. (This used to be a per-window ImGuiWindowFlags_ResizeFromAnySide flag)
-	"boolean ConfigWindowsMoveFromTitleBarOnly;" & _; = false       ; [BETA] Set to true to only allow moving windows when clicked+dragged from the title bar. Windows without a title bar are not affected.
-	"float ConfigWindowsMemoryCompactTimer;" & _	; = 60.0f          ; [BETA] Compact window memory usage when unused. Set to -1.0f to disable.
-	""& _
-	"ptr BackendPlatformName;" & _		; = NULL
-	"ptr BackendRendererName;" & _		; = NULL
-	"ptr BackendPlatformUserData;" & _	; = NULL           ; User data for platform back-end
-	"ptr BackendRendererUserData;" & _	; = NULL           ; User data for renderer back-end
-	"ptr BackendLanguageUserData;" & _	; = NULL           ; User data for non C++ programming language back-end
-	""& _
-	"ptr GetClipboardTextFn;" & _
-	"ptr SetClipboardTextFn;" & _
-	"ptr ClipboardUserData;" & _
-	"ptr RenderDrawListsFnUnused;" & _
-	"float MousePos_x;" & _					; Mouse position, in pixels. Set to ImVec2(-FLT_MAX, -FLT_MAX) if mouse is unavailable (on another screen, etc.)
-	"float MousePos_y;" & _					; = NULL           ; User data for non C++ programming language back-end
-	"boolean MouseDown[5];" & _				; Mouse buttons: 0=left, 1=right, 2=middle + extras (ImGuiMouseButton_COUNT == 5). Dear ImGui mostly uses left and right buttons. Others buttons allows us to track if the mouse is being used by your application + available to user as a convenience via IsMouse** API.
-	"float MouseWheel;" & _					; Mouse wheel Vertical: 1 unit scrolls about 5 lines text.
-	"float MouseWheelH;" & _				; Mouse wheel Horizontal. Most users don't have a mouse with an horizontal wheel, may not be filled by all back-ends.
-	"uint MouseHoveredViewport;" & _		; (Optional) When using multiple viewports: viewport the OS mouse cursor is hovering _IGNORING_ viewports with the ImGuiViewportFlags_NoInputs flag, and _REGARDLESS_ of whether another viewport is focused. Set io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport if you can provide this info. If you don't imgui will infer the value using the rectangles and last focused time of the viewports it knows about (ignoring other OS windows).
-	"boolean KeyCtrl;" & _					; Keyboard modifier pressed: Control
-	"boolean KeyShift;" & _					; Keyboard modifier pressed: Shift
-	"boolean KeyAlt;" & _					; Keyboard modifier pressed: Alt
-	"boolean KeySuper;" & _					; Keyboard modifier pressed: Cmd/Super/Windows
-	"boolean KeysDown[512];" & _			; Keyboard keys that are pressed (ideally left in the "native" order your engine has access to keyboard keys, so you can use your own defines/enums for keys).
-	"float NavInputs[21];" & _				; Gamepad inputs. Cleared back to zero by EndFrame(). Keyboard keys will be auto-mapped and be written here by NewFrame().
-	""& _
-	""& _ ; mouse and keyboard
-	"boolean WantCaptureMouse;" & _			; Set when Dear ImGui will use mouse inputs, in this case do not dispatch them to your main game/application (either way, always pass on mouse inputs to imgui). (e.g. unclicked mouse is hovering over an imgui window, widget is active, mouse was clicked over an imgui window, etc.).
-	"boolean WantCaptureKeyboard;" & _		; Set when Dear ImGui will use keyboard inputs, in this case do not dispatch them to your main game/application (either way, always pass keyboard inputs to imgui). (e.g. InputText active, or an imgui window is focused and navigation is enabled, etc.).
-	"boolean WantTextInput;" & _			; Mobile/console: when set, you may display an on-screen keyboard. This is set by Dear ImGui when it wants textual keyboard input to happen (e.g. when a InputText widget is active).
-	"boolean WantSetMousePos;" & _			; MousePos has been altered, back-end should reposition mouse on next frame. Rarely used! Set only when ImGuiConfigFlags_NavEnableSetMousePos flag is enabled.
-	"boolean WantSaveIniSettings;" & _		; When manual .ini load/save is active (io.IniFilename == NULL), this will be set to notify your application that you can call SaveIniSettingsToMemory() and save yourself. Important: clear io.WantSaveIniSettings yourself after saving!
-	"boolean NavActive;" & _				; Keyboard/Gamepad navigation is currently allowed (will handle ImGuiKey_NavXXX events) = a window is focused and it doesn't use the ImGuiWindowFlags_NoNavInputs flag.
-	"boolean NavVisible;" & _				; Keyboard/Gamepad navigation is visible and allowed (will handle ImGuiKey_NavXXX events).
-	"float Framerate;" & _					; Application framerate estimate, in frame per second. Solely for convenience. Rolling average estimation based on io.DeltaTime over 120 frames.
-	"int MetricsRenderVertices;" & _		; Vertices output during last call to Render()
-	"int MetricsRenderIndices;" & _			; Indices output during last call to Render() = number of triangles * 3
-	"int MetricsRenderWindows;" & _			; Number of visible windows
-	"int MetricsActiveWindows;" & _			; Number of active windows
-	"int MetricsActiveAllocations;" & _		; Number of active allocations, updated by MemAlloc/MemFree based on current context. May be off if you have multiple imgui contexts.
-	"float MouseDelta_x;" & _				; Mouse delta. Note that this is zero if either current or previous position are invalid (-FLT_MAX,-FLT_MAX), so a disappearing/reappearing mouse won't have a huge delta.
-	"float MouseDelta_y;" & _				; Gamepad inputs. Cleared back to zero by EndFrame(). Keyboard keys will be auto-mapped and be written here by NewFrame().
-	""& _
-	""& _
-	"int KeyMods;" & _								; Key mods flags (same as io.KeyCtrl/KeyShift/KeyAlt/KeySuper but merged into flags), updated by NewFrame()
-	"float MousePosPrev_x;" & _						; Previous mouse position (note that MouseDelta is not necessary == MousePos-MousePosPrev, in case either position is invalid)
-	"float MousePosPrev_y;" & _
-	"float MouseClickedPos[10];" & _				; Position at time of clicking
-	"double MouseClickedTime[5];" & _				; Time of last click (used to figure out double-click)
-	"boolean MouseClicked[5];" & _					; Mouse button went from !Down to Down
-	"boolean MouseDoubleClicked[5];" & _			; Has mouse button been double-clicked?
-	"boolean MouseReleased[5];" & _					; Mouse button went from Down to !Down
-	"boolean MouseDownOwned[5];" & _				; Track if button down was a double-click
-	"boolean MouseDownWasDoubleClick[5];" & _		; Track if button was clicked inside a dear imgui window. We don't request mouse capture from the application if click started outside ImGui bounds.
-	"float MouseDownDuration[5];" & _				; Duration the mouse button has been down (0.0f == just clicked)
-	"float MouseDownDurationPrev[5];" & _			; Previous time the mouse button has been down
-	"float MouseDragMaxDistanceAbs[10];" & _		; Maximum distance, absolute, on each axis, of how much mouse has traveled from the clicking point
-	"float MouseDragMaxDistanceSqr[5];" & _			; Squared maximum distance of how much mouse has traveled from the clicking point
-	"float KeysDownDuration[512];" & _				; Duration the keyboard key has been down (0.0f == just pressed)
-	"float KeysDownDurationPrev[512];" & _			; Previous duration the key has been down
-	"float NavInputsDownDuration[21];" & _
-	"float NavInputsDownDurationPrev[21];" & _
-	"float PenPressure;" & _						; Touch/Pen pressure (0.0f to 1.0f, should be >0.0f only when MouseDown[0] == true). Helper storage currently unused by Dear ImGui.
-	"ushort InputQueueSurrogate;"					; For AddInputCharacterUTF16
-
-Global $__tagImGuiStyle = _
-	"float Alpha;" & _								;  Global alpha applies to everything in Dear ImGui.
-	"float WindowPadding_x;" & _					;  Padding within a window.
-	"float WindowPadding_y;" & _
-	"float WindowRounding;" & _						;  Radius of window corners rounding. Set to 0.0f to have rectangular windows. Large values tend to lead to variety of artifacts and are not recommended.
-	"float WindowBorderSize;" & _					;  Thickness of border around windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-	"float WindowMinSize_x;" & _					;  Minimum window size. This is a global setting. If you want to constraint individual windows, use SetNextWindowSizeConstraints().
-	"float WindowMinSize_y;" & _
-	"float WindowTitleAlign_x;" & _					;  Alignment for title bar text. Defaults to (0.0f,0.5f) for left-aligned,vertically centered.
-	"float WindowTitleAlign_y;" & _
-	"int WindowMenuButtonPosition;" & _				;  Side of the collapsing/docking button in the title bar (None/Left/Right). Defaults to ImGuiDir_Left.
-	"float ChildRounding;" & _						;  Radius of child window corners rounding. Set to 0.0f to have rectangular windows.
-	"float ChildBorderSize;" & _					;  Thickness of border around child windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-	"float PopupRounding;" & _						;  Radius of popup window corners rounding. (Note that tooltip windows use WindowRounding)
-	"float PopupBorderSize;" & _					;  Thickness of border around popup/tooltip windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-	"float FramePadding_x;" & _						;  Padding within a framed rectangle (used by most widgets).
-	"float FramePadding_y;" & _
-	"float FrameRounding;" & _						;  Radius of frame corners rounding. Set to 0.0f to have rectangular frame (used by most widgets).
-	"float FrameBorderSize;" & _					;  Thickness of border around frames. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-	"float ItemSpacing_x;" & _						;  Horizontal and vertical spacing between widgets/lines.
-	"float ItemSpacing_y;" & _
-	"float ItemInnerSpacing_x;" & _					;  Horizontal and vertical spacing between within elements of a composed widget (e.g. a slider and its label).
-	"float ItemInnerSpacing_y;" & _
-	"float TouchExtraPadding_x;" & _				;  Expand reactive bounding box for touch-based system where touch position is not accurate enough. Unfortunately we don't sort widgets so priority on overlap will always be given to the first widget. So don't grow this too much!
-	"float TouchExtraPadding_y;" & _
-	"float IndentSpacing;" & _						;  Horizontal indentation when e.g. entering a tree node. Generally == (FontSize + FramePadding.x*2).
-	"float ColumnsMinSpacing;" & _					;  Minimum horizontal spacing between two columns. Preferably > (FramePadding.x + 1).
-	"float ScrollbarSize;" & _						;  Width of the vertical scrollbar, Height of the horizontal scrollbar.
-	"float ScrollbarRounding;" & _					;  Radius of grab corners for scrollbar.
-	"float GrabMinSize;" & _						;  Minimum width/height of a grab box for slider/scrollbar.
-	"float GrabRounding;" & _						;  Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
-	"float TabRounding;" & _						;  Radius of upper corners of a tab. Set to 0.0f to have rectangular tabs.
-	"float TabBorderSize;" & _							;  Thickness of border around tabs.
-	"float TabMinWidthForUnselectedCloseButton;" & _	;  Minimum width for close button to appears on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
-	"int ColorButtonPosition;" & _						;  Side of the color button in the ColorEdit4 widget (left/right). Defaults to ImGuiDir_Right.
-	"float ButtonTextAlign_x;" & _					;  Alignment of button text when button is larger than text. Defaults to (0.5f, 0.5f) (centered).
-	"float ButtonTextAlign_y;" & _
-	"float SelectableTextAlign_x;" & _				;  Alignment of selectable text. Defaults to (0.0f, 0.0f) (top-left aligned). It's generally important to keep this left-aligned if you want to lay multiple items on a same line.
-	"float SelectableTextAlign_y;" & _
-	"float DisplayWindowPadding_x;" & _				;  Window position are clamped to be visible within the display area or monitors by at least this amount. Only applies to regular windows.
-	"float DisplayWindowPadding_y;" & _
-	"float DisplaySafeAreaPadding_x;" & _			;  If you cannot see the edges of your screen (e.g. on a TV) increase the safe area padding. Apply to popups/tooltips as well regular windows. NB: Prefer configuring your TV sets correctly!
-	"float DisplaySafeAreaPadding_y;" & _
-	"float MouseCursorScale;" & _					;  Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). We apply per-monitor DPI scaling over this scale. May be removed later.
-	"boolean AntiAliasedLines;" & _					;  Enable anti-aliasing on lines/borders. Disable if you are really tight on CPU/GPU.
-	"boolean AntiAliasedFill;" & _					;  Enable anti-aliasing on filled shapes (rounded rectangles, circles, etc.)
-	"float CurveTessellationTol;" & _				;  Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
-	"float CircleSegmentMaxError;"					;  Maximum error (in pixels) allowed when using AddCircle()/AddCircleFilled() or drawing rounded corner rectangles with no explicit segment count specified. Decrease for higher quality but more geometry.
-
-Global Const $__tagImGuiViewport = _
-	"int ID;" & _									;  Unique identifier for the viewport
-	"int Flags;" & _								;  See ImGuiViewportFlags_
-	"float Pos_x;" & _								;  Main Area: Position of the viewport (the imgui coordinates are the same as OS desktop/native coordinates)
-	"float Pos_y;" & _
-	"float Size_x;" & _								;  Main Area: Size of the viewport.
-	"float Size_y;" & _
-	"float WorkOffsetMin_x;" & _					;  Work Area: Offset from Pos to top-left corner of Work Area. Generally (0,0) or (0,+main_menu_bar_height). Work Area is Full Area but without menu-bars/status-bars (so WorkArea always fit inside Pos/Size!)
-	"float WorkOffsetMin_y;" & _
-	"float WorkOffsetMax_x;" & _					;  Work Area: Offset from Pos+Size to bottom-right corner of Work Area. Generally (0,0) or (0,-status_bar_height).
-	"float WorkOffsetMax_y;" & _
-	"float DpiScale;" & _							;  1.0f = 96 DPI = No extra scale.
-	"ptr DrawData;" & _								;  The ImDrawData corresponding to this viewport. Valid after Render() and until the next call to NewFrame().
-	"int ParentViewportId;" & _						;  (Advanced) 0: no parent. Instruct the platform back-end to setup a parent/child relationship between platform windows.
-	"ptr RendererUserData;" & _						;  void* to hold custom data structure for the renderer (e.g. swap chain, framebuffers etc.). generally set by your Renderer_CreateWindow function.
-	"ptr PlatformUserData;" & _						;  void* to hold custom data structure for the OS / platform (e.g. windowing info, render context). generally set by your Platform_CreateWindow function.
-	"ptr PlatformHandle;" & _						;  void* for FindViewportByPlatformHandle(). (e.g. suggested to use natural platform handle such as HWND, GLFWWindow*, SDL_Window*)
-	"ptr PlatformHandleRaw;" & _					;  void* to hold lower-level, platform-native window handle (e.g. the HWND) when using an abstraction layer like GLFW or SDL (where PlatformHandle would be a SDL_Window*)
-	"boolean PlatformRequestMove;" & _				;  Platform window requested move (e.g. window was moved by the OS / host window manager, authoritative position will be OS window position)
-	"boolean PlatformRequestResize;" & _			;  Platform window requested resize (e.g. window was resized by the OS / host window manager, authoritative size will be OS window size)
-	"boolean PlatformRequestClose;" 				;  Platform window requested closure (e.g. window was moved by the OS / host window manager, e.g. pressing ALT-F4)
 
 Func _ImGui_GetIO()
 
@@ -1608,7 +1604,7 @@ Func _ImGui_DockSpaceOverViewport($viewport = 0, $dockspace_flags = $ImGuiDockNo
 	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
-Func _ImGui_SetNextWindowDockID($id, $cond = 0)
+Func _ImGui_SetNextWindowDockID($id, $cond = $ImGuiCond_None)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowDockID", "int", $id, "int", $cond)
 EndFunc
 Func _ImGui_SetNextWindowClass($window_class)
@@ -1849,7 +1845,15 @@ Func _ImGui_DestroyPlatformWindows()
 	DllCall($IMGUI_DLL, "none:cdecl", "DestroyPlatformWindows")
 EndFunc
 
+
+
+
+
+
 ; ========================================================================================================================================== ImDraw
+
+Global $ImDrawList_ptr = 0, $ImDraw_offset_x = 0, $ImDraw_offset_y = 0
+
 
 Func _ImDraw_SetOffset($x, $y)
 	$ImDraw_offset_x = $x
@@ -1917,9 +1921,7 @@ Func _ImDraw_AddNgonFilled($center_x, $center_y, $radius, $col = 0xFFFFFFFF, $nu
 	DllCall($IMGUI_DLL, "none:cdecl", "AddNgonFilled", "ptr", $ImDrawList_ptr, "float", $center_x, "float", $center_y, "float", $radius, "uint", $col, "int", $num_segments)
 EndFunc
 Func _ImDraw_AddPolyline($points, $col = 0xFFFFFFFF, $closed = True, $thickness = 1)
-
 	If not IsArray($points) Then Return False
-
 	Local $points_count = UBound($points)
 	Local $tag = ""
 	For $i = 0 To $points_count*2
@@ -1931,8 +1933,6 @@ Func _ImDraw_AddPolyline($points, $col = 0xFFFFFFFF, $closed = True, $thickness 
 		DllStructSetData($struct_points, $i*2 + 1,  $points[$i][0])
 		DllStructSetData($struct_points, $i*2+1 + 1, $points[$i][1])
 	Next
-
-
 	DllCall($IMGUI_DLL, "none:cdecl", "AddPolyline", "ptr", $ImDrawList_ptr, "ptr", DllStructGetPtr($struct_points), "int", $points_count, "uint", $col, "boolean", $closed, "float", $thickness)
 EndFunc
 Func _ImDraw_AddQuad($p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $col = 0xFFFFFFFF, $thickness = 1)
@@ -1947,4 +1947,36 @@ EndFunc
 Func _ImDraw_AddText($text, $font, $font_size, $pos_x, $pos_y, $col = 0xFFFFFFFF, $wrap_width = 0)
 	DllCall($IMGUI_DLL, "none:cdecl", "AddText", "ptr", $ImDrawList_ptr, "ptr", $font, "float", $font_size, "float", $pos_x, "float", $pos_y, "uint", $col, "wstr", $text, "float", $wrap_width)
 EndFunc
-
+Func _ImDraw_AddTriangle($p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $col = 0xFFFFFFFF, $thickness = 1)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddTriangle", "ptr", $ImDrawList_ptr, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "float", $p3_x, "float", $p3_y, "uint", $col, "float", $thickness)
+EndFunc
+Func _ImDraw_AddTriangleFilled($p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $col = 0xFFFFFFFF)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddTriangleFilled", "ptr", $ImDrawList_ptr, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "float", $p3_x, "float", $p3_y, "uint", $col)
+EndFunc
+Func _ImDraw_PathClear()
+	DllCall($IMGUI_DLL, "none:cdecl", "PathClear", "ptr", $ImDrawList_ptr)
+EndFunc
+Func _ImDraw_PathLineTo($pos_x, $pos_y)
+	DllCall($IMGUI_DLL, "none:cdecl", "PathLineTo", "ptr", $ImDrawList_ptr, "float", $pos_x, "float", $pos_y)
+EndFunc
+Func _ImDraw_PathLineToMergeDuplicate($pos_x, $pos_y)
+	DllCall($IMGUI_DLL, "none:cdecl", "PathLineToMergeDuplicate", "ptr", $ImDrawList_ptr, "float", $pos_x, "float", $pos_y)
+EndFunc
+Func _ImDraw_PathFillConvex($col)
+	DllCall($IMGUI_DLL, "none:cdecl", "PathFillConvex", "ptr", $ImDrawList_ptr, "uint", $col)
+EndFunc
+Func _ImDraw_PathStroke($col, $closed, $thickness = 1)
+	DllCall($IMGUI_DLL, "none:cdecl", "PathStroke", "ptr", $ImDrawList_ptr, "uint", $col, "boolean", $closed, "float", $thickness)
+EndFunc
+Func _ImDraw_PathArcTo($center_x, $center_y, $radius, $a_min, $a_max, $num_segments = 20)
+	DllCall($IMGUI_DLL, "none:cdecl", "PathArcTo", "ptr", $ImDrawList_ptr, "float", $center_x, "float", $center_y, "float", $radius, "float", $a_min, "float", $a_max, "int", $num_segments)
+EndFunc
+Func _ImDraw_PathArcToFast($center_x, $center_y, $radius, $a_min_of_12, $a_max_of_12)
+	DllCall($IMGUI_DLL, "none:cdecl", "PathArcToFast", "ptr", $ImDrawList_ptr, "float", $center_x, "float", $center_y, "float", $radius, "int", $a_min_of_12, "int", $a_max_of_12)
+EndFunc
+Func _ImDraw_PathBezierCurveTo($p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $num_segments = 0)
+	DllCall($IMGUI_DLL, "none:cdecl", "PathBezierCurveTo", "ptr", $ImDrawList_ptr, "float", $p2_x, "float", $p2_y, "float", $p3_x, "float", $p3_y, "float", $p4_x, "float", $p4_y, "int", $num_segments)
+EndFunc
+Func _ImDraw_PathRect($rect_min_x, $rect_min_y, $rect_max_x, $rect_max_y, $rounding = 0, $rounding_corners = $ImDrawCornerFlags_All)
+	DllCall($IMGUI_DLL, "none:cdecl", "PathRect", "ptr", $ImDrawList_ptr, "float", $rect_min_x, "float", $rect_min_y, "float", $rect_max_x, "float", $rect_max_y, "float", $rounding, "int", $rounding_corners)
+EndFunc
