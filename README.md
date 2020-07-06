@@ -12,7 +12,7 @@
 
 ### Preview
   
-![](https://i.imgur.com/gc6xjWf.png)  <!-- .element height="50%" width="50%" -->
+![preview](https://i.imgur.com/gc6xjWf.png)  <!-- .element height="50%" width="50%" -->
 
 ### Usage
 ```autoit
