@@ -14,7 +14,7 @@ Global $sCallTipPath = $SciTEUserDir & "\au3.user.calltips.api"
 Global $sKeyWordPath = $SciTEUserDir & "\au3.userudfs.properties"
 Global $aCallTip, $cc
 
-;~ _FileReadToArray($sCallTipPath, $aCallTip)
+_FileReadToArray($sCallTipPath, $aCallTip)
 If IsArray($aCallTip) = False Then
 	Local $aCallTip[1] = [0]
 EndIf
