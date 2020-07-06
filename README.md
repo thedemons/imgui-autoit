@@ -1,4 +1,10 @@
 # imgui-autoit
-### Info
 
-- ImGui is an open source library that make fancy User Interfaces, it's based on DirectX drawing. You can check it [here](https://github.com/ocornut/imgui")
+### Info
+- ImGui is an open source library that make fancy User Interfaces, it's based on DirectX drawing. You can check it [here](https://github.com/ocornut/imgui)
+- This UDF in AutoIt has converted more than +260 functions from ImGui (compiled to dll)
+
+### Usage
+```autoit
+Msgbox(0, "","")
+```
