@@ -5,7 +5,7 @@
 - It renders frame by frame, of course, this is an advantage, it's more flexible to use.
 - The hardest part I thought when I started writing this is: How am I gonna make it FAST? Because, you know.. AutoIt is slow.
 - When i finally put the code to work, suprisingly, i got it runs at max fps, you can create thousands of items and it's still fine.
-- So I decided to convert the whole ImGui library to AutoIt, converting function by function.
+- So I decided to convert the whole ImGui library to AutoIt, convert function by function.
 
 ### Feature
 - This UDF has more than +260 functions converted from ImGui (compiled dll).
