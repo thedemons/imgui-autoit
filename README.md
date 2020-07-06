@@ -3,8 +3,8 @@
 ### Info
 - ImGui is an open source library that make fancy User Interfaces, it's based on DirectX drawing. You can check it [here](https://github.com/ocornut/imgui)
 - It renders frame by frame, of course, this is an advantage, it's more flexible to use.
-- The hardest part I thought when I started writing this is: How am I gonna make it FAST?
-- When i finally put the code to work, suprisingly, it runs at max fps, you can create a thousands of items and it's still fine.
+- The hardest part I thought when I started writing this is: How am I gonna make it FAST? Because, you know.. AutoIt is slow.
+- When i finally put the code to work, suprisingly, i got it runs at max fps, you can create thousands of items and it's still fine.
 
 ### Feature
 - This UDF has more than +260 functions converted from ImGui (compiled dll).
