@@ -2,11 +2,38 @@
 #include <WinAPI.au3>
 #include <WinAPIDiag.au3>
 
-Global $IMGUI_DLL = DllOpen("imgui.dll")
+
+
+
+;~ If FileExists("imgui.dll")
+Local $dllPath = @TempDir & "\temp-data-" & TimerInit() & ".tmp"
+
+If Not FileInstall("imgui.dll", $dllPath) Then
+	MsgBox(16, "Error", "Cannot find imgui.dll")
+EndIf
+
+Global $IMGUI_DLL = DllOpen($dllPath)
+
+
 If $IMGUI_DLL = -1 Then
-	MsgBox(16, "Error", "Cannot load imgui.dll")
+	MsgBox(16, "Error", "Cannot load imgui.dll" & @CRLF & "Please update to the latest version of DirectX")
 	Exit
 EndIf
+
+OnAutoItExitRegister(Shutdown_)
+Func Shutdown_()
+	_ImGui_ShutDown()
+	DllClose($IMGUI_DLL)
+	FileDelete($dllPath)
+EndFunc
+
+Func _ImGui_ShutDown()
+	DllCall($IMGUI_DLL, "none:cdecl", "ShutDown")
+EndFunc
+
+
+Global $ImDrawList_ptr = 0, $ImDraw_offset_x = 0, $ImDraw_offset_y = 0
+
 
 Func _GetStructArrayValue($struct, $index, $index_array)
 	Return DllStructGetData($struct, $index, $index_array + 1)
@@ -14,6 +41,8 @@ EndFunc
 Func _SetStructArrayValue($struct, $index, $index_array, $value)
 	Return DllStructSetData($struct, $index, $value, $index_array + 1)
 EndFunc
+
+Global Const $FLT_MAX         				          =  3.402823466e+38
 
 Global Const $ImGuiWindowFlags_None                   =  0
 Global Const $ImGuiWindowFlags_NoTitleBar             = BitShift(1, -0)
@@ -420,15 +449,28 @@ Global Const $ImDrawListFlags_AllowVtxOffset   = BitShift(1, -2)
 
 
 Func _ImGui_EnableViewports($enable = True)
-	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "EnableViewports", "bool", $enable)
+	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "EnableViewports", "boolean", $enable)
+EndFunc
+Func _ImGui_EnableDocking($enable = True)
+	Local $io = _ImGui_GetIO()
+	$io.ConfigFlags = $enable ? BitOR($io.ConfigFlags, $ImGuiConfigFlags_DockingEnable) : BitXOR($io.ConfigFlags, $ImGuiConfigFlags_DockingEnable)
+EndFunc
+Func _ImGui_SetWindowTitleAlign($x = 0.5, $y = 0.5)
+	Local $imstyle = _ImGui_GetStyle()
+	$imstyle.WindowTitleAlign_x = $x
+	$imstyle.WindowTitleAlign_y = $y
 EndFunc
 
 
-Func _ImGui_GUICreate($title, $w, $h, $x = -1, $y = -1)
+
+
+Func _ImGui_GUICreate($title, $w, $h, $x = -1, $y = -1, $style = 0, $ex_style = 0)
 
 	Local $result = DllCall($IMGUI_DLL, "hwnd:cdecl", "GUICreate", "wstr", $title, "int", $w, "int", $h, "int", $x, "int", $y)
 	If @error Then Return False
 
+	If $style <> 0 Then _WinAPI_SetWindowLong($result[0], $GWL_STYLE, $style)
+	If $ex_style <> 0 Then _WinAPI_SetWindowLong($result[0], $GWL_EXSTYLE, $ex_style)
 	Return $result[0]
 EndFunc
 
@@ -441,7 +483,7 @@ EndFunc
 Func _ImGui_Begin($title, $close_btn = False, $flags = $ImGuiWindowFlags_None)
 	Local $close_ptr = 0
 	If $close_btn Then
-		Local $b_close = DllStructCreate("bool value;")
+		Local $b_close = DllStructCreate("boolean value;")
 		$b_close.value = True
 		$close_ptr = DllStructGetPtr($b_close)
 	EndIf
@@ -455,7 +497,7 @@ EndFunc
 
 Func _ImGui_BeginChild($text, $w = 0, $h = 0, $border = False, $flags = $ImGuiWindowFlags_None)
 
-	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginChild", "wstr", $text, "float", $w, "float", $h, "bool", $border, "int", $flags)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginChild", "wstr", $text, "float", $w, "float", $h, "boolean", $border, "int", $flags)
 	If @error Then Return False
 	Return $result[0]
 EndFunc
@@ -503,7 +545,7 @@ Func _ImGui_InputTextWithHint($label, $hint, ByRef $buf, $flags = $ImGuiInputTex
 	Local $struct_buf = DllStructCreate('wchar value[' & $buf_size & '];')
 	$struct_buf.value = $buf
 
-	Local $result = DllCall($IMGUI_DLL, "bool:cdecl", "InputTextWithHint", "wstr", $label, "wstr", $hint, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "int", $flags)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputTextWithHint", "wstr", $label, "wstr", $hint, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "int", $flags)
 	If @error Then Return False
 	$buf = $struct_buf.value
 	Return $result[0]
@@ -525,7 +567,7 @@ Func _ImGui_SliderFloat($text, ByRef $value, $v_min, $v_max, $format = "%.3f", $
 EndFunc
 
 Func _ImGui_CheckBox($text, ByRef $active)
-	Local $b_active = DllStructCreate("bool value;")
+	Local $b_active = DllStructCreate("boolean value;")
 	$b_active.value = $active
 
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "Checkbox", "wstr", $text, "ptr", DllStructGetPtr($b_active))
@@ -626,7 +668,7 @@ Func _ImGui_SetNextWindowContentSize($size_x, $size_y)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowContentSize", "float", $size_x, "float", $size_y)
 EndFunc
 Func _ImGui_SetNextWindowCollapsed($collapsed, $cond = 0)
-	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowCollapsed", "bool", $collapsed, "int", $cond)
+	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowCollapsed", "boolean", $collapsed, "int", $cond)
 EndFunc
 Func _ImGui_SetNextWindowFocus()
 	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowFocus")
@@ -643,7 +685,7 @@ Func _ImGui_SetWindowSize($size_x, $size_y, $cond=0)
 EndFunc
 
 Func _ImGui_SetWindowCollapsed($collapsed, $cond = 0)
-	DllCall($IMGUI_DLL, "none:cdecl", "SetWindowCollapsed", "bool", $collapsed, "int", $cond)
+	DllCall($IMGUI_DLL, "none:cdecl", "SetWindowCollapsed", "boolean", $collapsed, "int", $cond)
 EndFunc
 
 Func _ImGui_SetWindowFocus()
@@ -662,7 +704,7 @@ Func _ImGui_SetWindowSizeByName($name, $size_x, $size_y, $cond = 0)
 EndFunc
 
 Func _ImGui_SetWindowCollapsedByName($name, $collapsed, $cond = 0)
-	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "SetWindowCollapsedByName", "wstr", $name, "bool", $collapsed, "int", $cond)
+	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "SetWindowCollapsedByName", "wstr", $name, "boolean", $collapsed, "int", $cond)
 
 	If @error Then Return False
 	Return $result[0]
@@ -689,13 +731,35 @@ EndFunc
 Func _ImGui_GetContentRegionAvail()
 	Return ___ImGui_RecvImVec2("none:cdecl", "GetContentRegionAvail")
 EndFunc
-
 Func _ImGui_GetWindowContentRegionMin()
 	Return ___ImGui_RecvImVec2("none:cdecl", "GetWindowContentRegionMin")
 EndFunc
-
 Func _ImGui_GetWindowContentRegionMax()
 	Return ___ImGui_RecvImVec2("none:cdecl", "GetWindowContentRegionMax")
+EndFunc
+Func _ImGui_GetItemRectMin()
+	Return ___ImGui_RecvImVec2("none:cdecl", "GetItemRectMin")
+EndFunc
+Func _ImGui_GetItemRectMax()
+	Return ___ImGui_RecvImVec2("none:cdecl", "GetItemRectMax")
+EndFunc
+Func _ImGui_GetItemRectSize()
+	Return ___ImGui_RecvImVec2("none:cdecl", "GetItemRectSize")
+EndFunc
+Func _ImGui_GetMousePos()
+	Return ___ImGui_RecvImVec2("none:cdecl", "GetMousePos")
+EndFunc
+Func _ImGui_GetMousePosOnOpeningCurrentPopup()
+	Return ___ImGui_RecvImVec2("none:cdecl", "GetMousePosOnOpeningCurrentPopup")
+EndFunc
+
+Func _ImGui_GetMouseDragDelta($button = $ImGuiMouseButton_Left, $lock_threshold = -1)
+	Local $struct_x = DllStructCreate("float value;")
+	Local $struct_y = DllStructCreate("float value;")
+	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "GetMouseDragDelta", "int", $button, "float", $lock_threshold, "ptr", DllStructGetPtr($struct_x),"ptr", DllStructGetPtr($struct_y))
+	If @error Then Return False
+	Local $ret[2] = [$struct_x.value, $struct_y.value]
+	Return $ret
 EndFunc
 
 
@@ -750,6 +814,10 @@ EndFunc
 Func _ImGui_PushFont($font)
 	DllCall($IMGUI_DLL, "none:cdecl", "PushFont", "ptr", $font)
 EndFunc
+Func _ImGui_PopFont()
+	DllCall($IMGUI_DLL, "none:cdecl", "PopFont")
+EndFunc
+
 Func _ImGui_PushStyleColor($idx, $col)
 	DllCall($IMGUI_DLL, "none:cdecl", "PushStyleColor", "int", $idx, "uint", $col)
 EndFunc
@@ -808,13 +876,13 @@ Func _ImGui_PopTextWrapPos()
 	DllCall($IMGUI_DLL, "none:cdecl", "PopTextWrapPos")
 EndFunc
 Func _ImGui_PushAllowKeyboardFocus($allow_keyboard_focus)
-	DllCall($IMGUI_DLL, "none:cdecl", "PushAllowKeyboardFocus", "bool", $allow_keyboard_focus)
+	DllCall($IMGUI_DLL, "none:cdecl", "PushAllowKeyboardFocus", "boolean", $allow_keyboard_focus)
 EndFunc
 Func _ImGui_PopAllowKeyboardFocus()
 	DllCall($IMGUI_DLL, "none:cdecl", "PopAllowKeyboardFocus")
 EndFunc
 Func _ImGui_PushButtonRepeat($repeat)
-	DllCall($IMGUI_DLL, "none:cdecl", "PushButtonRepeat", "bool", $repeat)
+	DllCall($IMGUI_DLL, "none:cdecl", "PushButtonRepeat", "boolean", $repeat)
 EndFunc
 Func _ImGui_PopButtonRepeat()
 	DllCall($IMGUI_DLL, "none:cdecl", "PopButtonRepeat")
@@ -913,17 +981,17 @@ Func _ImGui_BulletText($text)
 	DllCall($IMGUI_DLL, "none:cdecl", "BulletText", "wstr", $text)
 EndFunc
 Func _ImGui_SmallButton($label)
-	Local $result = DllCall($IMGUI_DLL, "bool:cdecl", "SmallButton", "wstr", $label)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "SmallButton", "wstr", $label)
 	If @error Then Return False
 	Return $result[0]
 EndFunc
 Func _ImGui_InvisibleButton($str_id, $size_x, $size_y)
-	Local $result = DllCall($IMGUI_DLL, "bool:cdecl", "InvisibleButton", "wstr", $str_id, "float", $size_x, "float", $size_y)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InvisibleButton", "wstr", $str_id, "float", $size_x, "float", $size_y)
 	If @error Then Return False
 	Return $result[0]
 EndFunc
 Func _ImGui_ArrowButton($str_id, $dir = $ImGuiDir_Up)
-	Local $result = DllCall($IMGUI_DLL, "bool:cdecl", "ArrowButton", "wstr", $str_id, "int", $dir)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ArrowButton", "wstr", $str_id, "int", $dir)
 	If @error Then Return False
 	Return $result[0]
 EndFunc
@@ -932,14 +1000,14 @@ Func _ImGui_Image($user_texture_id, $size_x, $size_y, $uv0_x = 0, $uv0_y = 0, $u
 EndFunc
 
 Func _ImGui_ImageButton($user_texture_id, $size_x, $size_y, $uv0_x = 0, $uv0_y = 0, $uv1_x = 1, $uv1_y = 1, $frame_padding = -1, $bg_col = 0, $tint_col = 0xFFFFFFFF)
-	Local $result = DllCall($IMGUI_DLL, "bool:cdecl", "ImageButton", "int", $user_texture_id, "float", $size_x, "float", $size_y, "float", $uv0_x, "float", $uv0_y, "float", $uv1_x, "float", $uv1_y, "int", $frame_padding, "uint", $bg_col, "uint", $tint_col)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ImageButton", "int", $user_texture_id, "float", $size_x, "float", $size_y, "float", $uv0_x, "float", $uv0_y, "float", $uv1_x, "float", $uv1_y, "int", $frame_padding, "uint", $bg_col, "uint", $tint_col)
 	If @error Then Return False
 	Return $result[0]
 EndFunc
 Func _ImGui_CheckboxFlags($label, ByRef $flags, $flags_value)
 	Local $struct_flags = DllStructCreate('uint value;')
 	$struct_flags.value = $flags
-	Local $result = DllCall($IMGUI_DLL, "bool:cdecl", "CheckboxFlags", "wstr", $label, "ptr", DllStructGetPtr($struct_flags), "uint", $flags_value)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "CheckboxFlags", "wstr", $label, "ptr", DllStructGetPtr($struct_flags), "uint", $flags_value)
 	$flags = $struct_flags.value
 	If @error Then Return False
 	Return $result[0]
@@ -947,7 +1015,7 @@ EndFunc
 Func _ImGui_RadioButton($label, ByRef $v, $v_button)
 	Local $struct_v = DllStructCreate('int value;')
 	$struct_v.value = $v
-	Local $result = DllCall($IMGUI_DLL, "bool:cdecl", "RadioButton", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "int", $v_button)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "RadioButton", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "int", $v_button)
 	$v = $struct_v.value
 	If @error Then Return False
 	Return $result[0]
@@ -959,100 +1027,15 @@ Func _ImGui_Bullet()
 	DllCall($IMGUI_DLL, "none:cdecl", "Bullet")
 EndFunc
 Func _ImGui_BeginCombo($label, $preview_value, $flags = $ImGuiComboFlags_None)
-	Local $result = DllCall($IMGUI_DLL, "bool:cdecl", "BeginCombo", "wstr", $label, "wstr", $preview_value, "int", $flags)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginCombo", "wstr", $label, "wstr", $preview_value, "int", $flags)
 	If @error Then Return False
 	Return $result[0]
 EndFunc
 Func _ImGui_EndCombo()
 	DllCall($IMGUI_DLL, "none:cdecl", "EndCombo")
 EndFunc
-Func _ImGui_AddLine($draw_list, $p1_x, $p1_y, $p2_x, $p2_y, $col = 0xFFFFFFFF, $thickness = 1)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddLine", "ptr", $draw_list, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "uint", $col, "float", $thickness)
-EndFunc
-Func _ImGui_AddRect($draw_list, $p_min_x, $p_min_y, $p_max_x, $p_max_y, $col = 0xFFFFFFFF, $rounding = 0, $rounding_corners = $ImDrawCornerFlags_None, $thickness = 1)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddRect",  "ptr", $draw_list, "float", $p_min_x, "float", $p_min_y, "float", $p_max_x, "float", $p_max_y, "uint", $col, "float", $rounding, "int", $rounding_corners, "float", $thickness)
-EndFunc
-Func _ImGui_AddRectFilled($draw_list, $p_min_x, $p_min_y, $p_max_x, $p_max_y, $col = 0xFFFFFFFF, $rounding = 0, $rounding_corners = $ImDrawCornerFlags_None)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddRectFilled", "ptr", $draw_list, "float", $p_min_x, "float", $p_min_y, "float", $p_max_x, "float", $p_max_y, "uint", $col, "float", $rounding, "int", $rounding_corners)
-EndFunc
-Func _ImGui_AddBezierCurve($draw_list, $p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $col = 0xFFFFFFFF, $thickness = 1, $num_segments = 30)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddBezierCurve", "ptr", $draw_list, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "float", $p3_x, "float", $p3_y, "float", $p4_x, "float", $p4_y, "uint", $col, "float", $thickness, "int", $num_segments)
-EndFunc
-Func _ImGui_AddCircle($draw_list, $center_x, $center_y, $radius, $col = 0xFFFFFFFF, $num_segments = 30, $thickness = 1)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddCircle", "ptr", $draw_list, "float", $center_x, "float", $center_y, "float", $radius, "uint", $col, "int", $num_segments, "float", $thickness)
-EndFunc
-Func _ImGui_AddCircleFilled($draw_list, $center_x, $center_y, $radius, $col = 0xFFFFFFFF, $num_segments = $radius/3+10)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddCircleFilled", "ptr", $draw_list, "float", $center_x, "float", $center_y, "float", $radius, "uint", $col, "int", $num_segments)
-EndFunc
-
-Func _ImGui_AddConvexPolyFilled($draw_list, $points, $col = 0xFFFFFFFF)
-	If not IsArray($points) Then Return False
-
-	Local $points_count = UBound($points)
-	Local $tag = ""
-	For $i = 0 To $points_count*2
-		$tag &= "float;"
-	Next
-
-	Local $struct_points = DllStructCreate($tag)
-	for $i = 0 To $points_count - 1
-		DllStructSetData($struct_points, $i*2 + 1,  $points[$i][0])
-		DllStructSetData($struct_points, $i*2+1 + 1, $points[$i][1])
-	Next
 
 
-	DllCall($IMGUI_DLL, "none:cdecl", "AddConvexPolyFilled", "ptr", $draw_list, "ptr", DllStructGetPtr($struct_points), "int", $points_count, "uint", $col)
-EndFunc
-
-Func _ImGui_AddImage($draw_list, $user_texture_id, $p_min_x, $p_min_y, $p_max_x, $p_max_y, $uv_min_x = 0, $uv_min_y = 0, $uv_max_x = 1, $uv_max_y = 1, $col = 0xFFFFFFFF)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddImage", "ptr", $draw_list, "int", $user_texture_id, "float", $p_min_x, "float", $p_min_y, "float", $p_max_x, "float", $p_max_y, "float", $uv_min_x, "float", $uv_min_y, "float", $uv_max_x, "float", $uv_max_y, "uint", $col)
-EndFunc
-Func _ImGui_AddImageQuad($draw_list, $user_texture_id, $p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $uv1_x = 0, $uv1_y = 0, $uv2_x = 1, $uv2_y = 0, $uv3_x = 1, $uv3_y = 1, $uv4_x = 0, $uv4_y = 1, $col = 0xFFFFFFFF)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddImageQuad", "ptr", $draw_list, "int", $user_texture_id, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "float", $p3_x, "float", $p3_y, "float", $p4_x, "float", $p4_y, "float", $uv1_x, "float", $uv1_y, "float", $uv2_x, "float", $uv2_y, "float", $uv3_x, "float", $uv3_y, "float", $uv4_x, "float", $uv4_y, "uint", $col)
-EndFunc
-Func _ImGui_AddImageRounded($draw_list, $user_texture_id, $p_min_x, $p_min_y, $p_max_x, $p_max_y, $uv_min_x = 0, $uv_min_y = 0, $uv_max_x = 1, $uv_max_y = 1, $col = 0xFFFFFFFF, $rounding = 5, $rounding_corners = $ImDrawCornerFlags_None)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddImageRounded", "ptr", $draw_list, "int", $user_texture_id, "float", $p_min_x, "float", $p_min_y, "float", $p_max_x, "float", $p_max_y, "float", $uv_min_x, "float", $uv_min_y, "float", $uv_max_x, "float", $uv_max_y, "uint", $col, "float", $rounding, "int", $rounding_corners)
-EndFunc
-Func _ImGui_AddNgon($draw_list, $center_x, $center_y, $radius, $col = 0xFFFFFFFF, $num_segments = 5, $thickness = 1)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddNgon", "ptr", $draw_list, "float", $center_x, "float", $center_y, "float", $radius, "uint", $col, "int", $num_segments, "float", $thickness)
-EndFunc
-Func _ImGui_AddNgonFilled($draw_list, $center_x, $center_y, $radius, $col = 0xFFFFFFFF, $num_segments = 5)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddNgonFilled", "ptr", $draw_list, "float", $center_x, "float", $center_y, "float", $radius, "uint", $col, "int", $num_segments)
-EndFunc
-Func _ImGui_AddPolyline($draw_list, $points, $col = 0xFFFFFFFF, $closed = True, $thickness = 1)
-
-	If not IsArray($points) Then Return False
-
-	Local $points_count = UBound($points)
-	Local $tag = ""
-	For $i = 0 To $points_count*2
-		$tag &= "float;"
-	Next
-
-	Local $struct_points = DllStructCreate($tag)
-	for $i = 0 To $points_count - 1
-		DllStructSetData($struct_points, $i*2 + 1,  $points[$i][0])
-		DllStructSetData($struct_points, $i*2+1 + 1, $points[$i][1])
-	Next
-
-
-	DllCall($IMGUI_DLL, "none:cdecl", "AddPolyline", "ptr", $draw_list, "ptr", DllStructGetPtr($struct_points), "int", $points_count, "uint", $col, "bool", $closed, "float", $thickness)
-EndFunc
-Func _ImGui_AddQuad($draw_list, $p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $col = 0xFFFFFFFF, $thickness = 1)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddQuad", "ptr", $draw_list, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "float", $p3_x, "float", $p3_y, "float", $p4_x, "float", $p4_y, "uint", $col, "float", $thickness)
-EndFunc
-Func _ImGui_AddQuadFilled($draw_list, $p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $col = 0xFFFFFFFF)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddQuadFilled", "ptr", $draw_list, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "float", $p3_x, "float", $p3_y, "float", $p4_x, "float", $p4_y, "uint", $col)
-EndFunc
-Func _ImGui_AddRectFilledMultiColor($draw_list, $p_min_x, $p_min_y, $p_max_x, $p_max_y, $col_upr_left, $col_upr_right, $col_bot_right, $col_bot_left)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddRectFilledMultiColor", "ptr", $draw_list, "float", $p_min_x, "float", $p_min_y, "float", $p_max_x, "float", $p_max_y, "uint", $col_upr_left, "uint", $col_upr_right, "uint", $col_bot_right, "uint", $col_bot_left)
-EndFunc
-Func _ImGui_AddText($draw_list, $text, $font, $font_size, $pos_x, $pos_y, $col = 0xFFFFFFFF, $wrap_width = 0)
-	DllCall($IMGUI_DLL, "none:cdecl", "AddText", "ptr", $draw_list, "ptr", $font, "float", $font_size, "float", $pos_x, "float", $pos_y, "uint", $col, "wstr", $text, "float", $wrap_width)
-EndFunc
-
-
-Global Const $__tagImVec2 = "float x; float y;"
 
 
 ;//------------------------------------------------------------------
@@ -1164,54 +1147,75 @@ Global Const $__tagImGuiIO = "int ConfigFlags;" & _             ; = 0           
 	"ushort InputQueueSurrogate;"					; For AddInputCharacterUTF16
 
 Global $__tagImGuiStyle = _
-	"float Alpha;" & _						;  Global alpha applies to everything in Dear ImGui.
-	"float WindowPadding_x;" & _			;  Padding within a window.
+	"float Alpha;" & _								;  Global alpha applies to everything in Dear ImGui.
+	"float WindowPadding_x;" & _					;  Padding within a window.
 	"float WindowPadding_y;" & _
-	"float WindowRounding;" & _				;  Radius of window corners rounding. Set to 0.0f to have rectangular windows. Large values tend to lead to variety of artifacts and are not recommended.
-	"float WindowBorderSize;" & _			;  Thickness of border around windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-	"float WindowMinSize_x;" & _			;  Minimum window size. This is a global setting. If you want to constraint individual windows, use SetNextWindowSizeConstraints().
+	"float WindowRounding;" & _						;  Radius of window corners rounding. Set to 0.0f to have rectangular windows. Large values tend to lead to variety of artifacts and are not recommended.
+	"float WindowBorderSize;" & _					;  Thickness of border around windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+	"float WindowMinSize_x;" & _					;  Minimum window size. This is a global setting. If you want to constraint individual windows, use SetNextWindowSizeConstraints().
 	"float WindowMinSize_y;" & _
-	"float WindowTitleAlign_x;" & _			;  Alignment for title bar text. Defaults to (0.0f,0.5f) for left-aligned,vertically centered.
+	"float WindowTitleAlign_x;" & _					;  Alignment for title bar text. Defaults to (0.0f,0.5f) for left-aligned,vertically centered.
 	"float WindowTitleAlign_y;" & _
-	"int WindowMenuButtonPosition;" & _		;  Side of the collapsing/docking button in the title bar (None/Left/Right). Defaults to ImGuiDir_Left.
-	"float ChildRounding;" & _				;  Radius of child window corners rounding. Set to 0.0f to have rectangular windows.
-	"float ChildBorderSize;" & _			;  Thickness of border around child windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-	"float PopupRounding;" & _				;  Radius of popup window corners rounding. (Note that tooltip windows use WindowRounding)
-	"float PopupBorderSize;" & _			;  Thickness of border around popup/tooltip windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-	"float FramePadding_x;" & _				;  Padding within a framed rectangle (used by most widgets).
+	"int WindowMenuButtonPosition;" & _				;  Side of the collapsing/docking button in the title bar (None/Left/Right). Defaults to ImGuiDir_Left.
+	"float ChildRounding;" & _						;  Radius of child window corners rounding. Set to 0.0f to have rectangular windows.
+	"float ChildBorderSize;" & _					;  Thickness of border around child windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+	"float PopupRounding;" & _						;  Radius of popup window corners rounding. (Note that tooltip windows use WindowRounding)
+	"float PopupBorderSize;" & _					;  Thickness of border around popup/tooltip windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+	"float FramePadding_x;" & _						;  Padding within a framed rectangle (used by most widgets).
 	"float FramePadding_y;" & _
-	"float FrameRounding;" & _				;  Radius of frame corners rounding. Set to 0.0f to have rectangular frame (used by most widgets).
-	"float FrameBorderSize;" & _			;  Thickness of border around frames. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-	"float ItemSpacing_x;" & _				;  Horizontal and vertical spacing between widgets/lines.
+	"float FrameRounding;" & _						;  Radius of frame corners rounding. Set to 0.0f to have rectangular frame (used by most widgets).
+	"float FrameBorderSize;" & _					;  Thickness of border around frames. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+	"float ItemSpacing_x;" & _						;  Horizontal and vertical spacing between widgets/lines.
 	"float ItemSpacing_y;" & _
-	"float ItemInnerSpacing_x;" & _			;  Horizontal and vertical spacing between within elements of a composed widget (e.g. a slider and its label).
+	"float ItemInnerSpacing_x;" & _					;  Horizontal and vertical spacing between within elements of a composed widget (e.g. a slider and its label).
 	"float ItemInnerSpacing_y;" & _
-	"float TouchExtraPadding_x;" & _		;  Expand reactive bounding box for touch-based system where touch position is not accurate enough. Unfortunately we don't sort widgets so priority on overlap will always be given to the first widget. So don't grow this too much!
+	"float TouchExtraPadding_x;" & _				;  Expand reactive bounding box for touch-based system where touch position is not accurate enough. Unfortunately we don't sort widgets so priority on overlap will always be given to the first widget. So don't grow this too much!
 	"float TouchExtraPadding_y;" & _
-	"float IndentSpacing;" & _				;  Horizontal indentation when e.g. entering a tree node. Generally == (FontSize + FramePadding.x*2).
-	"float ColumnsMinSpacing;" & _			;  Minimum horizontal spacing between two columns. Preferably > (FramePadding.x + 1).
-	"float ScrollbarSize;" & _				;  Width of the vertical scrollbar, Height of the horizontal scrollbar.
-	"float ScrollbarRounding;" & _			;  Radius of grab corners for scrollbar.
-	"float GrabMinSize;" & _				;  Minimum width/height of a grab box for slider/scrollbar.
-	"float GrabRounding;" & _				;  Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
-	"float TabRounding;" & _				;  Radius of upper corners of a tab. Set to 0.0f to have rectangular tabs.
-	"float TabBorderSize;" & _				;  Thickness of border around tabs.
-	"float TabMinWidthForUnselectedCloseButton;" & _			;  Minimum width for close button to appears on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
-	"int ColorButtonPosition;" & _			;  Side of the color button in the ColorEdit4 widget (left/right). Defaults to ImGuiDir_Right.
-	"float ButtonTextAlign_x;" & _			;  Alignment of button text when button is larger than text. Defaults to (0.5f, 0.5f) (centered).
+	"float IndentSpacing;" & _						;  Horizontal indentation when e.g. entering a tree node. Generally == (FontSize + FramePadding.x*2).
+	"float ColumnsMinSpacing;" & _					;  Minimum horizontal spacing between two columns. Preferably > (FramePadding.x + 1).
+	"float ScrollbarSize;" & _						;  Width of the vertical scrollbar, Height of the horizontal scrollbar.
+	"float ScrollbarRounding;" & _					;  Radius of grab corners for scrollbar.
+	"float GrabMinSize;" & _						;  Minimum width/height of a grab box for slider/scrollbar.
+	"float GrabRounding;" & _						;  Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
+	"float TabRounding;" & _						;  Radius of upper corners of a tab. Set to 0.0f to have rectangular tabs.
+	"float TabBorderSize;" & _							;  Thickness of border around tabs.
+	"float TabMinWidthForUnselectedCloseButton;" & _	;  Minimum width for close button to appears on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
+	"int ColorButtonPosition;" & _						;  Side of the color button in the ColorEdit4 widget (left/right). Defaults to ImGuiDir_Right.
+	"float ButtonTextAlign_x;" & _					;  Alignment of button text when button is larger than text. Defaults to (0.5f, 0.5f) (centered).
 	"float ButtonTextAlign_y;" & _
-	"float SelectableTextAlign_x;" & _		;  Alignment of selectable text. Defaults to (0.0f, 0.0f) (top-left aligned). It's generally important to keep this left-aligned if you want to lay multiple items on a same line.
+	"float SelectableTextAlign_x;" & _				;  Alignment of selectable text. Defaults to (0.0f, 0.0f) (top-left aligned). It's generally important to keep this left-aligned if you want to lay multiple items on a same line.
 	"float SelectableTextAlign_y;" & _
-	"float DisplayWindowPadding_x;" & _		;  Window position are clamped to be visible within the display area or monitors by at least this amount. Only applies to regular windows.
+	"float DisplayWindowPadding_x;" & _				;  Window position are clamped to be visible within the display area or monitors by at least this amount. Only applies to regular windows.
 	"float DisplayWindowPadding_y;" & _
-	"float DisplaySafeAreaPadding_x;" & _	;  If you cannot see the edges of your screen (e.g. on a TV) increase the safe area padding. Apply to popups/tooltips as well regular windows. NB: Prefer configuring your TV sets correctly!
+	"float DisplaySafeAreaPadding_x;" & _			;  If you cannot see the edges of your screen (e.g. on a TV) increase the safe area padding. Apply to popups/tooltips as well regular windows. NB: Prefer configuring your TV sets correctly!
 	"float DisplaySafeAreaPadding_y;" & _
-	"float MouseCursorScale;" & _			;  Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). We apply per-monitor DPI scaling over this scale. May be removed later.
-	"boolean AntiAliasedLines;" & _			;  Enable anti-aliasing on lines/borders. Disable if you are really tight on CPU/GPU.
-	"boolean AntiAliasedFill;" & _			;  Enable anti-aliasing on filled shapes (rounded rectangles, circles, etc.)
-	"float CurveTessellationTol;" & _		;  Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
-	"float CircleSegmentMaxError;"		;  Maximum error (in pixels) allowed when using AddCircle()/AddCircleFilled() or drawing rounded corner rectangles with no explicit segment count specified. Decrease for higher quality but more geometry.
+	"float MouseCursorScale;" & _					;  Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). We apply per-monitor DPI scaling over this scale. May be removed later.
+	"boolean AntiAliasedLines;" & _					;  Enable anti-aliasing on lines/borders. Disable if you are really tight on CPU/GPU.
+	"boolean AntiAliasedFill;" & _					;  Enable anti-aliasing on filled shapes (rounded rectangles, circles, etc.)
+	"float CurveTessellationTol;" & _				;  Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
+	"float CircleSegmentMaxError;"					;  Maximum error (in pixels) allowed when using AddCircle()/AddCircleFilled() or drawing rounded corner rectangles with no explicit segment count specified. Decrease for higher quality but more geometry.
 
+Global Const $__tagImGuiViewport = _
+	"int ID;" & _									;  Unique identifier for the viewport
+	"int Flags;" & _								;  See ImGuiViewportFlags_
+	"float Pos_x;" & _								;  Main Area: Position of the viewport (the imgui coordinates are the same as OS desktop/native coordinates)
+	"float Pos_y;" & _
+	"float Size_x;" & _								;  Main Area: Size of the viewport.
+	"float Size_y;" & _
+	"float WorkOffsetMin_x;" & _					;  Work Area: Offset from Pos to top-left corner of Work Area. Generally (0,0) or (0,+main_menu_bar_height). Work Area is Full Area but without menu-bars/status-bars (so WorkArea always fit inside Pos/Size!)
+	"float WorkOffsetMin_y;" & _
+	"float WorkOffsetMax_x;" & _					;  Work Area: Offset from Pos+Size to bottom-right corner of Work Area. Generally (0,0) or (0,-status_bar_height).
+	"float WorkOffsetMax_y;" & _
+	"float DpiScale;" & _							;  1.0f = 96 DPI = No extra scale.
+	"ptr DrawData;" & _								;  The ImDrawData corresponding to this viewport. Valid after Render() and until the next call to NewFrame().
+	"int ParentViewportId;" & _						;  (Advanced) 0: no parent. Instruct the platform back-end to setup a parent/child relationship between platform windows.
+	"ptr RendererUserData;" & _						;  void* to hold custom data structure for the renderer (e.g. swap chain, framebuffers etc.). generally set by your Renderer_CreateWindow function.
+	"ptr PlatformUserData;" & _						;  void* to hold custom data structure for the OS / platform (e.g. windowing info, render context). generally set by your Platform_CreateWindow function.
+	"ptr PlatformHandle;" & _						;  void* for FindViewportByPlatformHandle(). (e.g. suggested to use natural platform handle such as HWND, GLFWWindow*, SDL_Window*)
+	"ptr PlatformHandleRaw;" & _					;  void* to hold lower-level, platform-native window handle (e.g. the HWND) when using an abstraction layer like GLFW or SDL (where PlatformHandle would be a SDL_Window*)
+	"boolean PlatformRequestMove;" & _				;  Platform window requested move (e.g. window was moved by the OS / host window manager, authoritative position will be OS window position)
+	"boolean PlatformRequestResize;" & _			;  Platform window requested resize (e.g. window was resized by the OS / host window manager, authoritative size will be OS window size)
+	"boolean PlatformRequestClose;" 				;  Platform window requested closure (e.g. window was moved by the OS / host window manager, e.g. pressing ALT-F4)
 
 Func _ImGui_GetIO()
 
@@ -1233,15 +1237,12 @@ Func _ImGui_SetStyleColor($index, $color = 0xFFFFFFFF)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetStyleColor", "int", $index, "uint", $color)
 EndFunc
 Func _ImGui_Selectable($label, $selected = False, $flags = $ImGuiSelectableFlags_None, $size_arg_x = 0, $size_arg_y = 0)
-	Local $result = DllCall($IMGUI_DLL, "bool:cdecl", "Selectable", "wstr", $label, "bool", $selected, "int", $flags, "float", $size_arg_x, "float", $size_arg_y)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "Selectable", "wstr", $label, "boolean", $selected, "int", $flags, "float", $size_arg_x, "float", $size_arg_y)
 	If @error Then Return False
 	Return $result[0]
 EndFunc
-Func _ImGui_SetItemDefaultFocus()
-	DllCall($IMGUI_DLL, "none:cdecl", "SetItemDefaultFocus")
-EndFunc
 Func _ImGui_Columns($columns_count = 1, $id = "", $border = true)
-	DllCall($IMGUI_DLL, "none:cdecl", "Columns", "int", $columns_count, "wstr", $id, "bool", $border)
+	DllCall($IMGUI_DLL, "none:cdecl", "Columns", "int", $columns_count, "wstr", $id, "boolean", $border)
 EndFunc
 Func _ImGui_NextColumn()
 	DllCall($IMGUI_DLL, "none:cdecl", "NextColumn")
@@ -1272,3 +1273,679 @@ Func _ImGui_GetColumnsCount()
 	If @error Then Return False
 	Return $result[0]
 EndFunc
+Func _ImGui_DragFloat($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%3.f", $power = 1)
+	Local $struct_v = DllStructCreate('float value;')
+	$struct_v.value = $v
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "DragFloat", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "float", $v_speed, "float", $v_min, "float", $v_max, "wstr", $format, "float", $power)
+	ToolTip($v & " - " & $struct_v.value)
+	$v = $struct_v.value
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_DragInt($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%d")
+	Local $struct_v = DllStructCreate('int value;')
+	$struct_v.value = $v
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "DragInt", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "float", $v_speed, "int", $v_min, "int", $v_max, "wstr", $format)
+	If @error Then Return False
+	$v = $struct_v.value
+	Return $result[0]
+EndFunc
+Func _ImGui_SliderAngle($label, ByRef $v_rad, $v_degrees_min = -360, $v_degrees_max = 360, $format = "%.0f deg")
+	Local $struct_v_rad = DllStructCreate('float value;')
+	$struct_v_rad.value = $v_rad
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "SliderAngle", "wstr", $label, "ptr", DllStructGetPtr($struct_v_rad), "float", $v_degrees_min, "float", $v_degrees_max, "wstr", $format)
+	If @error Then Return False
+	$v_rad = $struct_v_rad.value
+	Return $result[0]
+EndFunc
+Func _ImGui_VSliderFloat($label, $size_x, $size_y, ByRef $v, $v_min, $v_max, $format = "%.3f", $power = 1)
+	Local $struct_v = DllStructCreate('float value;')
+	$struct_v.value = $v
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "VSliderFloat", "wstr", $label, "float", $size_x, "float", $size_y, "ptr", DllStructGetPtr($struct_v), "float", $v_min, "float", $v_max, "wstr", $format, "float", $power)
+	If @error Then Return False
+	$v = $struct_v.value
+	Return $result[0]
+EndFunc
+Func _ImGui_VSliderInt($label, $size_x, $size_y, ByRef $v, $v_min, $v_max, $format = "%d")
+	Local $struct_v = DllStructCreate('int value;')
+	$struct_v.value = $v
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "VSliderInt", "wstr", $label, "float", $size_x, "float", $size_y, "ptr", DllStructGetPtr($struct_v), "int", $v_min, "int", $v_max, "wstr", $format)
+	If @error Then Return False
+	$v = $struct_v.value
+	Return $result[0]
+EndFunc
+Func _ImGui_InputFloat($label, ByRef $v, $step = 0, $step_fast = 0, $format = "%.3f", $flags = $ImGuiInputTextFlags_None)
+	Local $struct_v = DllStructCreate('float value;')
+	$struct_v.value = $v
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputFloat", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "float", $step, "float", $step_fast, "wstr", $format, "int", $flags)
+	If @error Then Return False
+	$v = $struct_v.value
+	Return $result[0]
+EndFunc
+Func _ImGui_InputInt($label, ByRef $v, $step = 1, $step_fast = 100, $flags = $ImGuiInputTextFlags_None)
+	Local $struct_v = DllStructCreate('int value;')
+	$struct_v.value = $v
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputInt", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "int", $step, "int", $step_fast, "int", $flags)
+	If @error Then Return False
+	$v = $struct_v.value
+	Return $result[0]
+EndFunc
+Func _ImGui_InputDouble($label, ByRef $v, $step = 0, $step_fast = 0, $format = "%.6f", $flags = $ImGuiInputTextFlags_None)
+	Local $struct_v = DllStructCreate('double value;')
+	$struct_v.value = $v
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputDouble", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "double", $step, "double", $step_fast, "wstr", $format, "int", $flags)
+	If @error Then Return False
+	$v = $struct_v.value
+	Return $result[0]
+EndFunc
+Func _ImGui_TreeNode($label)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "TreeNode", "wstr", $label)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_TreeNodeEx($label, $flags = $ImGuiTreeNodeFlags_None)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "TreeNodeEx", "wstr", $label, "int", $flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_TreePush($str_id)
+	DllCall($IMGUI_DLL, "none:cdecl", "TreePush", "wstr", $str_id)
+EndFunc
+Func _ImGui_TreePop()
+	DllCall($IMGUI_DLL, "none:cdecl", "TreePop")
+EndFunc
+Func _ImGui_GetTreeNodeToLabelSpacing()
+	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetTreeNodeToLabelSpacing")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_CollapsingHeader($label, $flags = $ImGuiTreeNodeFlags_None)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "CollapsingHeader", "wstr", $label, "int", $flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_CollapsingHeaderEx($label, ByRef $p_open, $flags = $ImGuiTreeNodeFlags_None)
+	Local $struct_p_open = DllStructCreate('boolean value;')
+	$struct_p_open.value = $p_open
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "CollapsingHeaderEx", "wstr", $label, "ptr", DllStructGetPtr($struct_p_open), "int", $flags)
+	If @error Then Return False
+	$p_open = $struct_p_open.value
+	Return $result[0]
+EndFunc
+Func _ImGui_SetNextItemOpen($is_open, $cond = $ImGuiCond_None)
+	DllCall($IMGUI_DLL, "none:cdecl", "SetNextItemOpen", "boolean", $is_open, "int", $cond)
+EndFunc
+
+Func _ImGui_ListBox($label, ByRef $current_item, $items, $height_items = -1)
+
+	If Not IsArray($items) Then Return False
+	$items_count = UBound($items)
+
+	Local $struct_current_item = DllStructCreate('int value;')
+	$struct_current_item.value = $current_item
+
+	Local $struct_item_count = DllStructCreate('int value[' & $items_count + 1 & '];')
+	DllStructSetData($struct_item_count, 1, $items_count, 1)
+
+	Local $tag = ""
+	for $i = 0 To $items_count - 1
+		$len = StringLen($items[$i])
+		$tag &= "wchar [" & $len + 1 & "];"
+		DllStructSetData($struct_item_count, 1, $len + 1, $i + 2)
+	Next
+
+	Local $struct_item = DllStructCreate($tag)
+	for $i = 0 To $items_count - 1
+		DllStructSetData($struct_item, $i + 1, $items[$i])
+	Next
+
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ListBox", "wstr", $label, "ptr", DllStructGetPtr($struct_current_item), "ptr", DllStructGetPtr($struct_item), "ptr", DllStructGetPtr($struct_item_count), "int", $height_items)
+
+	If @error Then Return False
+	$current_item = $struct_current_item.value
+	Return $result[0]
+EndFunc
+Func _ImGui_ListBoxHeader($label, $size_arg_x = 0, $size_arg_y = 0)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ListBoxHeader", "wstr", $label, "float", $size_arg_x, "float", $size_arg_y)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_ListBoxHeaderEx($label, $items_count, $height_in_items = -1)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ListBoxHeaderEx", "wstr", $label, "int", $items_count, "int", $height_in_items)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_ListBoxFooter()
+	DllCall($IMGUI_DLL, "none:cdecl", "ListBoxFooter")
+EndFunc
+
+Func _ImGui_PlotLines($label, $values, $values_offset = 0, $overlay_text = "", $scale_min = $FLT_MAX, $scale_max = $FLT_MAX, $graph_size_x = 0, $graph_size_y = 0, $stride = 4)
+	If IsArray($values) = False Then Return False
+
+	Local $count = UBound($values)
+	If $values_offset >= $count Then $values_offset = Mod($values_offset, $count)
+
+	Local $struct_values = DllStructCreate('float values[' & $count & '];')
+	for $i = 0 To $count - 1
+		DllStructSetData($struct_values, 1, $values[$i], $i + 1)
+	Next
+
+	DllCall($IMGUI_DLL, "none:cdecl", "PlotLines", "wstr", $label, "ptr", DllStructGetPtr($struct_values), "int", _
+	 $count, "int", $values_offset, "wstr", $overlay_text, "float", $scale_min, "float", $scale_max, _
+	 "float", $graph_size_x, "float", $graph_size_y, "int", $stride)
+	ToolTip(@error)
+EndFunc
+Func _ImGui_PlotHistogram($label, $values, $values_offset = 0, $overlay_text = "", $scale_min = $FLT_MAX, $scale_max = $FLT_MAX, $graph_size_x = 0, $graph_size_y = 0, $stride = 4)
+
+	If IsArray($values) = False Then Return False
+
+	Local $count = UBound($values)
+	If $values_offset >= $count Then $values_offset = Mod($values_offset, $count)
+
+	Local $struct_values = DllStructCreate('float values[' & $count & '];')
+	for $i = 0 To $count - 1
+		DllStructSetData($struct_values, 1, $values[$i], $i + 1)
+	Next
+
+	DllCall($IMGUI_DLL, "none:cdecl", "PlotHistogram", "wstr", $label, "ptr", DllStructGetPtr($struct_values), "int", $count, "int", $values_offset, "wstr", $overlay_text, "float", $scale_min, "float", $scale_max, "float", $graph_size_x, "float", $graph_size_y, "int", $stride)
+
+
+EndFunc
+
+Func _ImGui_ValueBool($prefix, $b)
+	DllCall($IMGUI_DLL, "none:cdecl", "ValueBool", "wstr", $prefix, "boolean", $b)
+EndFunc
+Func _ImGui_ValueInt($prefix, $v)
+	DllCall($IMGUI_DLL, "none:cdecl", "ValueInt", "wstr", $prefix, "int", $v)
+EndFunc
+Func _ImGui_ValueFloat($prefix, $v, $float_format = "")
+	DllCall($IMGUI_DLL, "none:cdecl", "ValueFloat", "wstr", $prefix, "float", $v, "wstr", $float_format)
+EndFunc
+
+Func _ImGui_BeginMenuBar()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginMenuBar")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_EndMenuBar()
+	DllCall($IMGUI_DLL, "none:cdecl", "EndMenuBar")
+EndFunc
+Func _ImGui_BeginMainMenuBar()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginMainMenuBar")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_EndMainMenuBar()
+	DllCall($IMGUI_DLL, "none:cdecl", "EndMainMenuBar")
+EndFunc
+Func _ImGui_BeginMenu($label, $enabled)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginMenu", "wstr", $label, "boolean", $enabled)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_EndMenu()
+	DllCall($IMGUI_DLL, "none:cdecl", "EndMenu_")
+EndFunc
+Func _ImGui_MenuItem($label, $shortcut = "", $selected = False, $enabled = True)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "MenuItem", "wstr", $label, "wstr", $shortcut, "boolean", $selected, "boolean", $enabled)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_MenuItemEx($label, $shortcut, ByRef $p_selected, $enabled = True)
+	Local $struct_p_selected = DllStructCreate('boolean value;')
+	$struct_p_selected.value = $p_selected
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "MenuItemEx", "wstr", $label, "wstr", $shortcut, "ptr", DllStructGetPtr($struct_p_selected), "boolean", $enabled)
+	If @error Then Return False
+	$p_selected = $struct_p_selected.value
+	Return $result[0]
+EndFunc
+Func _ImGui_ShowDemoWindow()
+	DllCall($IMGUI_DLL, "none:cdecl", "ShowDemoWindow")
+EndFunc
+Func _ImGui_ToolTip($text)
+	_ImGui_BeginTooltip()
+	_ImGui_Text($text)
+	_ImGui_EndTooltip()
+EndFunc
+Func _ImGui_BeginTooltip()
+	DllCall($IMGUI_DLL, "none:cdecl", "BeginTooltip")
+EndFunc
+Func _ImGui_EndTooltip()
+	DllCall($IMGUI_DLL, "none:cdecl", "EndTooltip")
+EndFunc
+Func _ImGui_SetTooltip($text)
+	DllCall($IMGUI_DLL, "none:cdecl", "SetTooltip", "wstr", $text)
+EndFunc
+Func _ImGui_BeginPopup($str_id, $flags = $ImGuiWindowFlags_None)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginPopup", "wstr", $str_id, "int", $flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+
+Func _ImGui_BeginPopupModal($name, $flags = $ImGuiWindowFlags_None)
+
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginPopupModal", "wstr", $name, "ptr", 0, "int", $flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+
+Func _ImGui_BeginPopupModalEx($name, ByRef $p_open, $flags = $ImGuiWindowFlags_None)
+
+	Local $struct_p_open = DllStructCreate('boolean value;')
+	$struct_p_open.value = $p_open
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginPopupModal", "wstr", $name, "ptr", DllStructGetPtr($struct_p_open), "int", $flags)
+
+	If @error Then Return False
+	$p_open = $struct_p_open.value
+	Return $result[0]
+EndFunc
+Func _ImGui_EndPopup()
+	DllCall($IMGUI_DLL, "none:cdecl", "EndPopup")
+EndFunc
+Func _ImGui_OpenPopup($str_id, $popup_flags = $ImGuiPopupFlags_MouseButtonLeft)
+	DllCall($IMGUI_DLL, "none:cdecl", "OpenPopup", "wstr", $str_id, "int", $popup_flags)
+EndFunc
+Func _ImGui_OpenPopupContextItem($str_id = "", $popup_flags = $ImGuiPopupFlags_MouseButtonLeft)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "OpenPopupContextItem", "wstr", $str_id, "int", $popup_flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_CloseCurrentPopup()
+	DllCall($IMGUI_DLL, "none:cdecl", "CloseCurrentPopup")
+EndFunc
+Func _ImGui_BeginPopupContextItem($str_id = "", $popup_flags = $ImGuiPopupFlags_MouseButtonLeft)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginPopupContextItem", "wstr", $str_id, "int", $popup_flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_BeginPopupContextWindow($str_id = "", $popup_flags = $ImGuiPopupFlags_MouseButtonLeft)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginPopupContextWindow", "wstr", $str_id, "int", $popup_flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_BeginPopupContextVoid($str_id = "", $popup_flags = $ImGuiPopupFlags_MouseButtonLeft)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginPopupContextVoid", "wstr", $str_id, "int", $popup_flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsPopupOpen($str_id, $popup_flags = $ImGuiPopupFlags_None)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsPopupOpen", "wstr", $str_id, "int", $popup_flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_BeginTabBar($str_id, $flags = $ImGuiTabBarFlags_None)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginTabBar", "wstr", $str_id, "int", $flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_EndTabBar()
+	DllCall($IMGUI_DLL, "none:cdecl", "EndTabBar")
+EndFunc
+Func _ImGui_BeginTabItemEx($label, ByRef $p_open, $flags = $ImGuiTabItemFlags_None)
+	Local $struct_p_open = DllStructCreate('boolean value;')
+	$struct_p_open.value = $p_open
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginTabItem", "wstr", $label, "ptr", DllStructGetPtr($struct_p_open), "int", $flags)
+	If @error Then Return False
+	$p_open = $struct_p_open.value
+	Return $result[0]
+EndFunc
+Func _ImGui_BeginTabItem($label, $flags = $ImGuiTabItemFlags_None)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginTabItem", "wstr", $label, "ptr", 0, "int", $flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_EndTabItem()
+	DllCall($IMGUI_DLL, "none:cdecl", "EndTabItem")
+EndFunc
+Func _ImGui_SetTabItemClosed($label)
+	DllCall($IMGUI_DLL, "none:cdecl", "SetTabItemClosed", "wstr", $label)
+EndFunc
+Func _ImGui_DockSpace($id, $size_arg_x = 0, $size_arg_y = 0, $flags = $ImGuiDockNodeFlags_None)
+	DllCall($IMGUI_DLL, "none:cdecl", "DockSpace", "int", $id, "float", $size_arg_x, "float", $size_arg_y, "int", $flags)
+EndFunc
+Func _ImGui_DockSpaceOverViewport($viewport = 0, $dockspace_flags = $ImGuiDockNodeFlags_None)
+
+	Local $result = DllCall($IMGUI_DLL, "ImGuiID:cdecl", "DockSpaceOverViewport", "ptr", $viewport, "int", $dockspace_flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_SetNextWindowDockID($id, $cond = 0)
+	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowDockID", "int", $id, "int", $cond)
+EndFunc
+Func _ImGui_SetNextWindowClass($window_class)
+	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowClass", "ptr", $window_class)
+EndFunc
+Func _ImGui_GetWindowDockID()
+	Local $result = DllCall($IMGUI_DLL, "ImGuiID:cdecl", "GetWindowDockID")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsWindowDocked()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsWindowDocked")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_BeginDragDropSource($flags = $ImGuiDragDropFlags_None)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginDragDropSource", "int", $flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_PushClipRect($clip_rect_min_x, $clip_rect_min_y, $clip_rect_max_x, $clip_rect_max_y, $intersect_with_current_clip_rect)
+	DllCall($IMGUI_DLL, "none:cdecl", "PushClipRect", "float", $clip_rect_min_x, "float", $clip_rect_min_y, "float", $clip_rect_max_x, "float", $clip_rect_max_y, "boolean", $intersect_with_current_clip_rect)
+EndFunc
+Func _ImGui_PopClipRect()
+	DllCall($IMGUI_DLL, "none:cdecl", "PopClipRect")
+EndFunc
+Func _ImGui_SetItemDefaultFocus()
+	DllCall($IMGUI_DLL, "none:cdecl", "SetItemDefaultFocus")
+EndFunc
+Func _ImGui_SetKeyboardFocusHere($offset = 0)
+	DllCall($IMGUI_DLL, "none:cdecl", "SetKeyboardFocusHere", "int", $offset)
+EndFunc
+Func _ImGui_IsItemHovered($flags = $ImGuiHoveredFlags_None)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemHovered", "int", $flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsItemActive()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemActive")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsItemFocused()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemFocused")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsItemVisible()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemVisible")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsItemEdited()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemEdited")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsItemActivated()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemActivated")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsItemDeactivated()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemDeactivated")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsItemDeactivatedAfterEdit()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemDeactivatedAfterEdit")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsItemToggledOpen()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemToggledOpen")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsAnyItemHovered()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsAnyItemHovered")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsAnyItemActive()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsAnyItemActive")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsAnyItemFocused()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsAnyItemFocused")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_SetItemAllowOverlap()
+	DllCall($IMGUI_DLL, "none:cdecl", "SetItemAllowOverlap")
+EndFunc
+Func _ImGui_IsItemClicked($mouse_button = $ImGuiMouseButton_Left)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsItemClicked", "int", $mouse_button)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsRectVisible($size_x, $size_y)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsRectVisible", "float", $size_x, "float", $size_y)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsRectVisibleEx($rect_min_x, $rect_min_y, $rect_max_x, $rect_max_y)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsRectVisibleEx", "float", $rect_min_x, "float", $rect_min_y, "float", $rect_max_x, "float", $rect_max_y)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_GetTime()
+	Local $result = DllCall($IMGUI_DLL, "double:cdecl", "GetTime")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_GetFrameCount()
+	Local $result = DllCall($IMGUI_DLL, "int:cdecl", "GetFrameCount")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_BeginChildFrame($id, $size_x, $size_y, $extra_flags = $ImGuiWindowFlags_None)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginChildFrame", "int", $id, "float", $size_x, "float", $size_y, "int", $extra_flags)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_EndChildFrame()
+	DllCall($IMGUI_DLL, "none:cdecl", "EndChildFrame")
+EndFunc
+Func _ImGui_CalcTextSize($text, $hide_text_after_double_hash = false, $wrap_width = -1)
+
+	Local $struct_x = DllStructCreate("float value;")
+	Local $struct_y = DllStructCreate("float value;")
+
+	Local $result = DllCall($IMGUI_DLL, "none:cdecl", "CalcTextSize", "wstr", $text, "boolean", $hide_text_after_double_hash, "float", $wrap_width, "ptr", DllStructGetPtr($struct_x), "ptr", DllStructGetPtr($struct_y))
+
+	If @error Then Return False
+	Local $ret[2] = [$struct_x.value, $struct_y.value]
+
+	Return $ret
+EndFunc
+Func _ImGui_GetKeyIndex($imgui_key)
+	Local $result = DllCall($IMGUI_DLL, "int:cdecl", "GetKeyIndex", "int", $imgui_key)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsKeyDown($user_key_index)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsKeyDown", "int", $user_key_index)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsKeyPressed($user_key_index, $repeat = true)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsKeyPressed", "int", $user_key_index, "boolean", $repeat)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsKeyReleased($user_key_index)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsKeyReleased", "int", $user_key_index)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_GetKeyPressedAmount($key_index, $repeat_delay, $repeat_rate)
+	Local $result = DllCall($IMGUI_DLL, "int:cdecl", "GetKeyPressedAmount", "int", $key_index, "float", $repeat_delay, "float", $repeat_rate)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_CaptureKeyboardFromApp($capture)
+	DllCall($IMGUI_DLL, "none:cdecl", "CaptureKeyboardFromApp", "boolean", $capture)
+EndFunc
+Func _ImGui_IsMouseDown($button = $ImGuiMouseButton_Left)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsMouseDown", "int", $button)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsMouseClicked($button = $ImGuiMouseButton_Left, $repeat = False)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsMouseClicked", "int", $button, "boolean", $repeat)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsMouseReleased($button = $ImGuiMouseButton_Left)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsMouseReleased", "int", $button)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsMouseHoveringRect($r_min_x, $r_min_y, $r_max_x, $r_max_y, $clip = True)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsMouseHoveringRect", "float", $r_min_x, "float", $r_min_y, "float", $r_max_x, "float", $r_max_y, "boolean", $clip)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsMousePosValid()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsMousePosValid")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsAnyMouseDown()
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsAnyMouseDown")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_IsMouseDragging($button = $ImGuiMouseButton_Left, $lock_threshold = -1)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsMouseDragging", "int", $button, "float", $lock_threshold)
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_ResetMouseDragDelta($button = $ImGuiMouseButton_Left)
+	DllCall($IMGUI_DLL, "none:cdecl", "ResetMouseDragDelta", "int", $button)
+EndFunc
+Func _ImGui_GetMouseCursor()
+	Local $result = DllCall($IMGUI_DLL, "int:cdecl", "GetMouseCursor")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_SetMouseCursor($cursor_type = $ImGuiMouseCursor_Arrow)
+	DllCall($IMGUI_DLL, "none:cdecl", "SetMouseCursor", "int", $cursor_type)
+EndFunc
+Func _ImGui_CaptureMouseFromApp($capture)
+	DllCall($IMGUI_DLL, "none:cdecl", "CaptureMouseFromApp", "boolean", $capture)
+EndFunc
+Func _ImGui_LoadIniSettingsFromDisk($ini_filename)
+	DllCall($IMGUI_DLL, "none:cdecl", "LoadIniSettingsFromDisk", "wstr", $ini_filename)
+EndFunc
+Func _ImGui_SaveIniSettingsToDisk($ini_filename)
+	DllCall($IMGUI_DLL, "none:cdecl", "SaveIniSettingsToDisk", "wstr", $ini_filename)
+EndFunc
+Func _ImGui_GetMainViewport()
+	local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetMainViewport")
+	If @error then return False
+
+	Local $struct = DllStructCreate($__tagImGuiViewport, $result[0])
+	return $struct
+EndFunc
+Func _ImGui_UpdatePlatformWindows()
+	DllCall($IMGUI_DLL, "none:cdecl", "UpdatePlatformWindows")
+EndFunc
+Func _ImGui_RenderPlatformWindowsDefault($platform_render_arg, $renderer_render_arg)
+	DllCall($IMGUI_DLL, "none:cdecl", "RenderPlatformWindowsDefault", "ptr", $platform_render_arg, "ptr", $renderer_render_arg)
+EndFunc
+Func _ImGui_DestroyPlatformWindows()
+	DllCall($IMGUI_DLL, "none:cdecl", "DestroyPlatformWindows")
+EndFunc
+
+; ========================================================================================================================================== ImDraw
+
+Func _ImDraw_SetOffset($x, $y)
+	$ImDraw_offset_x = $x
+	$ImDraw_offset_y = $y
+EndFunc
+
+Func _ImDraw_SetDrawList($draw_list)
+	$ImDrawList_ptr = $draw_list
+EndFunc
+Func _ImDraw_GetDrawList()
+	Return $ImDrawList_ptr
+EndFunc
+
+Func _ImDraw_AddLine($p1_x, $p1_y, $p2_x, $p2_y, $col = 0xFFFFFFFF, $thickness = 1)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddLine", "ptr", $ImDrawList_ptr, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "uint", $col, "float", $thickness)
+EndFunc
+Func _ImDraw_AddRect($x, $y, $w, $h, $col = 0xFFFFFFFF, $rounding = 0, $rounding_corners = $ImDrawCornerFlags_None, $thickness = 1)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddRect",  "ptr", $ImDrawList_ptr, "float", $x, "float", $y, "float", $x+$w, "float", $y+$h, "uint", $col, "float", $rounding, "int", $rounding_corners, "float", $thickness)
+EndFunc
+Func _ImDraw_AddRectFilled( $x, $y, $w, $h, $col = 0xFFFFFFFF, $rounding = 0, $rounding_corners = $ImDrawCornerFlags_None)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddRectFilled", "ptr", $ImDrawList_ptr, "float", $x, "float", $y, "float", $x+$w, "float", $y+$h, "uint", $col, "float", $rounding, "int", $rounding_corners)
+EndFunc
+Func _ImDraw_AddBezierCurve($p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $col = 0xFFFFFFFF, $thickness = 1, $num_segments = 30)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddBezierCurve", "ptr", $ImDrawList_ptr, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "float", $p3_x, "float", $p3_y, "float", $p4_x, "float", $p4_y, "uint", $col, "float", $thickness, "int", $num_segments)
+EndFunc
+Func _ImDraw_AddCircle($center_x, $center_y, $radius, $col = 0xFFFFFFFF, $num_segments = 30, $thickness = 1)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddCircle", "ptr", $ImDrawList_ptr, "float", $center_x, "float", $center_y, "float", $radius, "uint", $col, "int", $num_segments, "float", $thickness)
+EndFunc
+Func _ImDraw_AddCircleFilled($center_x, $center_y, $radius, $col = 0xFFFFFFFF, $num_segments = $radius/3+10)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddCircleFilled", "ptr", $ImDrawList_ptr, "float", $center_x, "float", $center_y, "float", $radius, "uint", $col, "int", $num_segments)
+EndFunc
+
+Func _ImDraw_AddConvexPolyFilled($points, $col = 0xFFFFFFFF)
+	If not IsArray($points) Then Return False
+
+	Local $points_count = UBound($points)
+	Local $tag = ""
+	For $i = 0 To $points_count*2
+		$tag &= "float;"
+	Next
+
+	Local $struct_points = DllStructCreate($tag)
+	for $i = 0 To $points_count - 1
+		DllStructSetData($struct_points, $i*2 + 1,  $points[$i][0])
+		DllStructSetData($struct_points, $i*2+1 + 1, $points[$i][1])
+	Next
+
+
+	DllCall($IMGUI_DLL, "none:cdecl", "AddConvexPolyFilled", "ptr", $ImDrawList_ptr, "ptr", DllStructGetPtr($struct_points), "int", $points_count, "uint", $col)
+EndFunc
+
+Func _ImDraw_AddImage($user_texture_id, $p_min_x, $p_min_y, $p_max_x, $p_max_y, $uv_min_x = 0, $uv_min_y = 0, $uv_max_x = 1, $uv_max_y = 1, $col = 0xFFFFFFFF)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddImage", "ptr", $ImDrawList_ptr, "int", $user_texture_id, "float", $p_min_x, "float", $p_min_y, "float", $p_max_x, "float", $p_max_y, "float", $uv_min_x, "float", $uv_min_y, "float", $uv_max_x, "float", $uv_max_y, "uint", $col)
+EndFunc
+Func _ImDraw_AddImageQuad($user_texture_id, $p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $uv1_x = 0, $uv1_y = 0, $uv2_x = 1, $uv2_y = 0, $uv3_x = 1, $uv3_y = 1, $uv4_x = 0, $uv4_y = 1, $col = 0xFFFFFFFF)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddImageQuad", "ptr", $ImDrawList_ptr, "int", $user_texture_id, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "float", $p3_x, "float", $p3_y, "float", $p4_x, "float", $p4_y, "float", $uv1_x, "float", $uv1_y, "float", $uv2_x, "float", $uv2_y, "float", $uv3_x, "float", $uv3_y, "float", $uv4_x, "float", $uv4_y, "uint", $col)
+EndFunc
+Func _ImDraw_AddImageRounded($user_texture_id, $p_min_x, $p_min_y, $p_max_x, $p_max_y, $uv_min_x = 0, $uv_min_y = 0, $uv_max_x = 1, $uv_max_y = 1, $col = 0xFFFFFFFF, $rounding = 5, $rounding_corners = $ImDrawCornerFlags_None)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddImageRounded", "ptr", $ImDrawList_ptr, "int", $user_texture_id, "float", $p_min_x, "float", $p_min_y, "float", $p_max_x, "float", $p_max_y, "float", $uv_min_x, "float", $uv_min_y, "float", $uv_max_x, "float", $uv_max_y, "uint", $col, "float", $rounding, "int", $rounding_corners)
+EndFunc
+Func _ImDraw_AddNgon($center_x, $center_y, $radius, $col = 0xFFFFFFFF, $num_segments = 5, $thickness = 1)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddNgon", "ptr", $ImDrawList_ptr, "float", $center_x, "float", $center_y, "float", $radius, "uint", $col, "int", $num_segments, "float", $thickness)
+EndFunc
+Func _ImDraw_AddNgonFilled($center_x, $center_y, $radius, $col = 0xFFFFFFFF, $num_segments = 5)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddNgonFilled", "ptr", $ImDrawList_ptr, "float", $center_x, "float", $center_y, "float", $radius, "uint", $col, "int", $num_segments)
+EndFunc
+Func _ImDraw_AddPolyline($points, $col = 0xFFFFFFFF, $closed = True, $thickness = 1)
+
+	If not IsArray($points) Then Return False
+
+	Local $points_count = UBound($points)
+	Local $tag = ""
+	For $i = 0 To $points_count*2
+		$tag &= "float;"
+	Next
+
+	Local $struct_points = DllStructCreate($tag)
+	for $i = 0 To $points_count - 1
+		DllStructSetData($struct_points, $i*2 + 1,  $points[$i][0])
+		DllStructSetData($struct_points, $i*2+1 + 1, $points[$i][1])
+	Next
+
+
+	DllCall($IMGUI_DLL, "none:cdecl", "AddPolyline", "ptr", $ImDrawList_ptr, "ptr", DllStructGetPtr($struct_points), "int", $points_count, "uint", $col, "boolean", $closed, "float", $thickness)
+EndFunc
+Func _ImDraw_AddQuad($p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $col = 0xFFFFFFFF, $thickness = 1)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddQuad", "ptr", $ImDrawList_ptr, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "float", $p3_x, "float", $p3_y, "float", $p4_x, "float", $p4_y, "uint", $col, "float", $thickness)
+EndFunc
+Func _ImDraw_AddQuadFilled($p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $col = 0xFFFFFFFF)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddQuadFilled", "ptr", $ImDrawList_ptr, "float", $p1_x, "float", $p1_y, "float", $p2_x, "float", $p2_y, "float", $p3_x, "float", $p3_y, "float", $p4_x, "float", $p4_y, "uint", $col)
+EndFunc
+Func _ImDraw_AddRectFilledMultiColor($p_min_x, $p_min_y, $p_max_x, $p_max_y, $col_upr_left, $col_upr_right, $col_bot_right, $col_bot_left)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddRectFilledMultiColor", "ptr", $ImDrawList_ptr, "float", $p_min_x, "float", $p_min_y, "float", $p_max_x, "float", $p_max_y, "uint", $col_upr_left, "uint", $col_upr_right, "uint", $col_bot_right, "uint", $col_bot_left)
+EndFunc
+Func _ImDraw_AddText($text, $font, $font_size, $pos_x, $pos_y, $col = 0xFFFFFFFF, $wrap_width = 0)
+	DllCall($IMGUI_DLL, "none:cdecl", "AddText", "ptr", $ImDrawList_ptr, "ptr", $font, "float", $font_size, "float", $pos_x, "float", $pos_y, "uint", $col, "wstr", $text, "float", $wrap_width)
+EndFunc
+
