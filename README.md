@@ -36,14 +36,14 @@ While 1
 	; must call
 	_ImGui_BeginFrame()
 
-  _ImGui_Begin("Another window")
+  	_ImGui_Begin("Another window")
   
-  _ImGui_Text("Hello there..")
+  	_ImGui_Text("Hello there..")
   
-  If _ImGui_Button("click me") Then $f_value = 5
+  	If _ImGui_Button("click me") Then $f_value = 5
   
-  _ImGui_SliderFloat("slider", $f_value, 2, 20)
-  If _ImGui_IsItemHovered() Then _ImGui_ToolTip("what r u doing?")
+  	_ImGui_SliderFloat("slider", $f_value, 2, 20)
+  	If _ImGui_IsItemHovered() Then _ImGui_ToolTip("what r u doing?")
   
 	_ImGui_End()
   
