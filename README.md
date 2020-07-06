@@ -11,8 +11,8 @@
 - Most of the rest that haven't been converted are because of AutoIt's limitation.
 
 ### Preview
-  
-![preview](https://i.imgur.com/gc6xjWf.png){:height="50%" width="50%"}
+
+<img src="https://i.imgur.com/gc6xjWf.png" width="48">
 
 ### Usage
 ```autoit
