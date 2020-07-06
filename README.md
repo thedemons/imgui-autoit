@@ -12,7 +12,7 @@
 
 ### Preview
   
-![](https://i.imgur.com/gc6xjWf.png =505x355)
+![](https://i.imgur.com/gc6xjWf.png =505x)
 
 ### Usage
 ```autoit
