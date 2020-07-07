@@ -1,6 +1,6 @@
 #include <Windowsconstants.au3>
 #include <WinAPI.au3>
-#include "..\ImGui.au3"
+#include "imgui.au3"
 
 
 _ImGui_EnableViewports()
