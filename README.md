@@ -13,7 +13,7 @@
 
 ### Preview
 
-<img src="https://i.imgur.com/5mdDAMK.png" width="505">
+<img src="https://i.imgur.com/u1XKVkY.png" width="505">
 
 ### Usage
 ```autoit
