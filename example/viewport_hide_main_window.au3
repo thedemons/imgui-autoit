@@ -5,7 +5,7 @@
 
 _ImGui_EnableViewports()
 
-Local $hwnd = _ImGui_GUICreate("AutoIt ImGui - Help", 1, 1, -100, -100, 0, $WS_EX_TOOLWINDOW)
+Local $hwnd = _ImGui_GUICreate("Example multiple viewports - Hide main window", 1, 1, -100, -100, 0, $WS_EX_TOOLWINDOW)
 _WinAPI_ShowWindow($hwnd)
 
 _ImGui_StyleColorsLight()
