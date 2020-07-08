@@ -4,7 +4,7 @@
 #include <WinAPI.au3>
 #include <WinAPIDiag.au3>
 
-Local $__imgui_dllpath = @TempDir & "\temp-data-" & TimerInit() & ".tmp"
+Local $__imgui_dllpath = @TempDir & "\temp-data-" & TimerInit() & ".tmp", $__imgui_created = False
 
 If Not FileInstall("imgui.dll", $__imgui_dllpath) Then
 	MsgBox(16, "Error", "Cannot find imgui.dll")
@@ -21,7 +21,7 @@ EndIf
 
 OnAutoItExitRegister(Shutdown_)
 Func Shutdown_()
-	_ImGui_ShutDown()
+	If $__imgui_created Then _ImGui_ShutDown()
 	DllClose($IMGUI_DLL)
 	FileDelete($__imgui_dllpath)
 EndFunc
@@ -635,16 +635,17 @@ Func _ImGui_SetWindowTitleAlign($x = 0.5, $y = 0.5)
 	$imstyle.WindowTitleAlign_y = $y
 EndFunc
 
-
-
-
 Func _ImGui_GUICreate($title, $w, $h, $x = -1, $y = -1, $style = 0, $ex_style = 0)
+	If $__imgui_created Then Return False
 
 	Local $result = DllCall($IMGUI_DLL, "hwnd:cdecl", "GUICreate", "wstr", $title, "int", $w, "int", $h, "int", $x, "int", $y)
 	If @error Then Return SetError(1, 0, 0)
 
 	If $style <> 0 Then _WinAPI_SetWindowLong($result[0], $GWL_STYLE, $style)
 	If $ex_style <> 0 Then _WinAPI_SetWindowLong($result[0], $GWL_EXSTYLE, $ex_style)
+
+	$__imgui_created = True
+
 	Return $result[0]
 EndFunc
 
@@ -654,6 +655,61 @@ Func _ImGui_PeekMsg()
 	Return $result[0]
 EndFunc
 
+
+
+
+
+
+
+; ####====================================================================================================================================================
+; ####\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; ####================================================================================================================================
+; ####\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+; // Main
+Func _ImGui_GetIO()
+
+	local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetIO")
+	If @error Then Return SetError(1, 0, 0)
+
+	Local $struct = DllStructCreate($__tagImGuiIO, $result[0])
+	return $struct
+EndFunc
+
+Func _ImGui_GetStyle()
+
+	local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetStyle")
+	If @error Then Return SetError(1, 0, 0)
+
+	Local $struct = DllStructCreate($__tagImGuiStyle, $result[0])
+	return $struct
+EndFunc
+
+Func _ImGui_BeginFrame()
+	DllCall($IMGUI_DLL, "none:cdecl", "BeginFrame")
+EndFunc
+
+Func _ImGui_EndFrame($clear_color = 0xFF738C99)
+	DllCall($IMGUI_DLL, "none:cdecl", "EndFrame", "uint", $clear_color)
+EndFunc
+
+
+; // Styles
+Func _ImGui_StyleColorsDark()
+	DllCall($IMGUI_DLL, "none:cdecl", "StyleColorsDark")
+EndFunc
+
+Func _ImGui_StyleColorsLight()
+	DllCall($IMGUI_DLL, "none:cdecl", "StyleColorsLight")
+EndFunc
+
+Func _ImGui_StyleColorsClassic()
+	DllCall($IMGUI_DLL, "none:cdecl", "StyleColorsClassic")
+EndFunc
+
+
+
+; // Windows
 Func _ImGui_Begin($title, $close_btn = False, $flags = $ImGuiWindowFlags_None)
 	Local $close_ptr = 0
 	If $close_btn Then
@@ -669,110 +725,27 @@ Func _ImGui_Begin($title, $close_btn = False, $flags = $ImGuiWindowFlags_None)
 	Return $b_close.value
 EndFunc
 
+Func _ImGui_End()
+	DllCall($IMGUI_DLL, "none:cdecl", "End")
+EndFunc
+
+
+; // Child Windows
 Func _ImGui_BeginChild($text, $w = 0, $h = 0, $border = False, $flags = $ImGuiWindowFlags_None)
 
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginChild", "wstr", $text, "float", $w, "float", $h, "boolean", $border, "int", $flags)
 	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
-Func _ImGui_End()
-	DllCall($IMGUI_DLL, "none:cdecl", "End")
-EndFunc
+
 Func _ImGui_EndChild()
 	DllCall($IMGUI_DLL, "none:cdecl", "EndChild")
 EndFunc
 
-Func _ImGui_Button($text, $w = 0, $h = 0)
-	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "Button", "wstr", $text, "float", $w, "float", $h)
-	If @error Then Return SetError(1, 0, 0)
-	Return $result[0]
-EndFunc
-
-Func _ImGui_InputText($label, ByRef $buf, $flags = $ImGuiInputTextFlags_None, $buf_size = 128000)
-
-
-	Local $struct_buf = DllStructCreate('wchar value[' & $buf_size & '];')
-	$struct_buf.value = $buf
-
-	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputText", "wstr", $label, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "int", $flags, "ptr", 0, "ptr", 0)
-	If @error Then Return SetError(1, 0, 0)
-
-	$buf = $struct_buf.value
-	Return $result[0]
-EndFunc
-
-Func _ImGui_InputTextMultiline($label, ByRef $buf, $size_x = 0, $size_y = 0, $flags = $ImGuiInputTextFlags_None, $buf_size = 128000)
-
-	Local $struct_buf = DllStructCreate('wchar value[' & $buf_size & '];')
-	$struct_buf.value = $buf
-
-	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputTextMultiline", "wstr", $label, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "float", $size_x, "float", $size_y, "int", $flags, "ptr", 0, "ptr", 0)
-
-	If @error Then Return SetError(1, 0, 0)
-
-	$buf = $struct_buf.value
-	Return $result[0]
-EndFunc
-
-Func _ImGui_InputTextWithHint($label, $hint, ByRef $buf, $flags = $ImGuiInputTextFlags_None, $buf_size = 128000)
-
-	Local $struct_buf = DllStructCreate('wchar value[' & $buf_size & '];')
-	$struct_buf.value = $buf
-
-	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputTextWithHint", "wstr", $label, "wstr", $hint, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "int", $flags)
-	If @error Then Return SetError(1, 0, 0)
-	$buf = $struct_buf.value
-	Return $result[0]
-EndFunc
-
-
-Func _ImGui_Text($text)
-	DllCall($IMGUI_DLL, "none:cdecl", "Text", "wstr", $text)
-EndFunc
-
-Func _ImGui_SliderFloat($text, ByRef $value, $v_min, $v_max, $format = "%.3f", $power = 1)
-
-	Local $struct = DllStructCreate("float value;")
-	$struct.value = $value
-	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "SliderFloat", "wstr", $text, "ptr", DllStructGetPtr($struct), "float", $v_min, "float", $v_max, "str", $format, "float", $power)
-	If @error Then Return SetError(1, 0, 0)
-	$value = $struct.value
-	Return $result[0]
-EndFunc
-
-Func _ImGui_CheckBox($text, ByRef $active)
-	Local $b_active = DllStructCreate("boolean value;")
-	$b_active.value = $active
-
-	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "Checkbox", "wstr", $text, "ptr", DllStructGetPtr($b_active))
-	If @error Then Return SetError(1, 0, 0)
-	$active = $b_active.value
-	Return $result[0]
-EndFunc
-
-Func _ImGui_BeginFrame()
-	DllCall($IMGUI_DLL, "none:cdecl", "BeginFrame")
-	DllCall($IMGUI_DLL, "none:cdecl", "DrawTest")
-EndFunc
-Func _ImGui_EndFrame($clear_color = 0xFF738C99)
-	DllCall($IMGUI_DLL, "none:cdecl", "EndFrame", "uint", $clear_color)
-EndFunc
 
 
 
 
-
-
-
-Func _ImGui_StyleColorsDark()
-	DllCall($IMGUI_DLL, "none:cdecl", "StyleColorsDark")
-EndFunc
-Func _ImGui_StyleColorsLight()
-	DllCall($IMGUI_DLL, "none:cdecl", "StyleColorsLight")
-EndFunc
-Func _ImGui_StyleColorsClassic()
-	DllCall($IMGUI_DLL, "none:cdecl", "StyleColorsClassic")
-EndFunc
 
 Func _ImGui_IsWindowAppearing()
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "IsWindowAppearing")
@@ -806,6 +779,7 @@ Func _ImGui_GetWindowDrawList()
 	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
+
 Func _ImGui_GetOverlayDrawList()
 	Local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetOverlayDrawList")
 	If @error Then Return SetError(1, 0, 0)
@@ -822,11 +796,33 @@ Func _ImGui_GetForegroundDrawList()
 	Return $result[0]
 EndFunc
 
+Func _ImGui_GetWindowDpiScale()
+	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetWindowDpiScale")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_GetWindowViewport()
+	Local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetWindowViewport")
+	If @error Then Return False
+	Local $struct = DllStructCreate($__tagImGuiViewport, $result[0])
+	return $struct
+EndFunc
+
 Func _ImGui_GetWindowPos()
 	Return ___ImGui_RecvImVec2("none:cdecl", "GetWindowPos")
 EndFunc
 Func _ImGui_GetWindowSize()
 	Return ___ImGui_RecvImVec2("none:cdecl", "GetWindowSize")
+EndFunc
+Func _ImGui_GetWindowWidth()
+	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetWindowWidth")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_GetWindowHeight()
+	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetWindowHeight")
+	If @error Then Return False
+	Return $result[0]
 EndFunc
 Func _ImGui_SetNextWindowPos($x, $y, $cond = $ImGuiCond_None, $pivot_x = 0, $pivot_y = 0)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetNextWindowPos", "float", $x, "float", $y, "int", $cond, "float", $pivot_x, "float", $pivot_y)
@@ -1141,6 +1137,10 @@ Func _ImGui_GetID($str_id)
 	Return $result[0]
 EndFunc
 
+Func _ImGui_Text($text)
+	DllCall($IMGUI_DLL, "none:cdecl", "Text", "wstr", $text)
+EndFunc
+
 Func _ImGui_TextColored($text, $color = 0xFFFFFFFF)
 	DllCall($IMGUI_DLL, "none:cdecl", "TextColored", "uint", $color, "wstr", $text)
 EndFunc
@@ -1155,6 +1155,12 @@ Func _ImGui_LabelText($label, $text)
 EndFunc
 Func _ImGui_BulletText($text)
 	DllCall($IMGUI_DLL, "none:cdecl", "BulletText", "wstr", $text)
+EndFunc
+
+Func _ImGui_Button($text, $w = 0, $h = 0)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "Button", "wstr", $text, "float", $w, "float", $h)
+	If @error Then Return SetError(1, 0, 0)
+	Return $result[0]
 EndFunc
 Func _ImGui_SmallButton($label)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "SmallButton", "wstr", $label)
@@ -1178,6 +1184,15 @@ EndFunc
 Func _ImGui_ImageButton($user_texture_id, $size_x, $size_y, $uv0_x = 0, $uv0_y = 0, $uv1_x = 1, $uv1_y = 1, $frame_padding = -1, $bg_col = 0, $tint_col = 0xFFFFFFFF)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ImageButton", "int", $user_texture_id, "float", $size_x, "float", $size_y, "float", $uv0_x, "float", $uv0_y, "float", $uv1_x, "float", $uv1_y, "int", $frame_padding, "uint", $bg_col, "uint", $tint_col)
 	If @error Then Return SetError(1, 0, 0)
+	Return $result[0]
+EndFunc
+Func _ImGui_CheckBox($text, ByRef $active)
+	Local $b_active = DllStructCreate("boolean value;")
+	$b_active.value = $active
+
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "Checkbox", "wstr", $text, "ptr", DllStructGetPtr($b_active))
+	If @error Then Return SetError(1, 0, 0)
+	$active = $b_active.value
 	Return $result[0]
 EndFunc
 Func _ImGui_CheckboxFlags($label, ByRef $flags, $flags_value)
@@ -1212,22 +1227,6 @@ Func _ImGui_EndCombo()
 EndFunc
 
 
-Func _ImGui_GetIO()
-
-	local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetIO")
-	If @error Then Return SetError(1, 0, 0)
-
-	Local $struct = DllStructCreate($__tagImGuiIO, $result[0])
-	return $struct
-EndFunc
-Func _ImGui_GetStyle()
-
-	local $result = DllCall($IMGUI_DLL, "ptr:cdecl", "GetStyle")
-	If @error Then Return SetError(1, 0, 0)
-
-	Local $struct = DllStructCreate($__tagImGuiStyle, $result[0])
-	return $struct
-EndFunc
 Func _ImGui_SetStyleColor($index, $color = 0xFFFFFFFF)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetStyleColor", "int", $index, "uint", $color)
 EndFunc
@@ -1277,6 +1276,60 @@ Func _ImGui_DragFloat($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $f
 	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
 EndFunc
+
+Func _ImGui_DragFloat2($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%.3f", $power = 1)
+	Return ___ImGui_DragFloatN(2, $label, $v, $v_speed, $v_min, $v_max, $format, $power)
+EndFunc
+Func _ImGui_DragFloat3($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%.3f", $power = 1)
+	Return ___ImGui_DragFloatN(3, $label, $v, $v_speed, $v_min, $v_max, $format, $power)
+EndFunc
+Func _ImGui_DragFloat4($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%.3f", $power = 1)
+	Return ___ImGui_DragFloatN(4, $label, $v, $v_speed, $v_min, $v_max, $format, $power)
+EndFunc
+
+Func ___ImGui_DragFloatN($n, $label, ByRef $v, $v_speed, $v_min, $v_max, $format, $power)
+	If $n < 2 Or $n > 4 Or UBound($v) < $n Then Return SetError(1, 0, 0)
+
+	Local $struct_value = DllStructCreate("float[" & $n & "]")
+	For $i = 0 To $n-1
+		DllStructSetData($struct_value, 1, $v[$i], $i + 1)
+	Next
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "DragFloatN", _
+		"int", $n, _
+		"wstr", $label, _
+		"ptr", DllStructGetPtr($struct_value), _
+		"float", $v_speed, _
+		"float", $v_min, _
+		"float", $v_max, _
+		"wstr", $format, _
+		"float", $power _
+	)
+
+	If @error Then Return False
+
+	For $i = 0 To $n-1
+		$v[$i] = DllStructGetData($struct_value, 1, $i + 1)
+	Next
+	Return $result[0]
+EndFunc
+
+Func _ImGui_DragFloatRange2($label, ByRef $v_current_min, ByRef $v_current_max, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%.3f", $format_max = "", $power = 1)
+
+	Local $struct_v_current_min = DllStructCreate('float value;')
+	$struct_v_current_min.value = $v_current_min
+
+	Local $struct_v_current_max = DllStructCreate('float value;')
+	$struct_v_current_max.value = $v_current_max
+
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "DragFloatRange2", "wstr", $label, "ptr", DllStructGetPtr($struct_v_current_min), "ptr", DllStructGetPtr($struct_v_current_max), "float", $v_speed, "float", $v_min, "float", $v_max, "wstr", $format, "wstr", $format_max, "float", $power)
+	If @error Then Return False
+
+	$v_current_min = $struct_v_current_min.value
+	$v_current_max = $struct_v_current_max.value
+
+	Return $result[0]
+EndFunc
+
 Func _ImGui_DragInt($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%d")
 	Local $struct_v = DllStructCreate('int value;')
 	$struct_v.value = $v
@@ -1285,6 +1338,149 @@ Func _ImGui_DragInt($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $for
 	$v = $struct_v.value
 	Return $result[0]
 EndFunc
+
+Func _ImGui_DragInt2($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format ="%d")
+	___ImGui_DragIntN(2, $label, $v, $v_speed, $v_min, $v_max, $format)
+EndFunc
+Func _ImGui_DragInt3($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format ="%d")
+	___ImGui_DragIntN(3, $label, $v, $v_speed, $v_min, $v_max, $format)
+EndFunc
+Func _ImGui_DragInt4($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format ="%d")
+	___ImGui_DragIntN(4, $label, $v, $v_speed, $v_min, $v_max, $format)
+EndFunc
+
+Func ___ImGui_DragIntN($n, $label, ByRef $v, $v_speed, $v_min, $v_max, $format)
+	If $n < 2 Or $n > 4 Or UBound($v) < $n Then Return SetError(1, 0, 0)
+
+	Local $struct_value = DllStructCreate("int[" & $n & "]")
+	For $i = 0 To $n-1
+		DllStructSetData($struct_value, 1, $v[$i], $i + 1)
+	Next
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "DragIntN", _
+		"int", $n, _
+		"wstr", $label, _
+		"ptr", DllStructGetPtr($struct_value), _
+		"float", $v_speed, _
+		"int", $v_min, _
+		"int", $v_max, _
+		"wstr", $format _
+	)
+
+	If @error Then Return False
+
+	For $i = 0 To $n-1
+		$v[$i] = DllStructGetData($struct_value, 1, $i + 1)
+	Next
+
+	Return $result[0]
+EndFunc
+
+Func _ImGui_DragIntRange2($label, ByRef $v_current_min, ByRef $v_current_max, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%.3f", $format_max = "")
+	Local $struct_v_current_min = DllStructCreate('int value;')
+	$struct_v_current_min.value = $v_current_min
+	Local $struct_v_current_max = DllStructCreate('int value;')
+	$struct_v_current_max.value = $v_current_max
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "DragIntRange2", "wstr", $label, "ptr", DllStructGetPtr($struct_v_current_min), "ptr", DllStructGetPtr($struct_v_current_max), "float", $v_speed, "int", $v_min, "int", $v_max, "wstr", $format, "wstr", $format_max)
+	If @error Then Return False
+	$v_current_min = $struct_v_current_min.value
+	$v_current_max = $struct_v_current_max.value
+	Return $result[0]
+EndFunc
+
+Func _ImGui_SliderFloat($text, ByRef $value, $v_min, $v_max, $format = "%.3f", $power = 1)
+
+	Local $struct = DllStructCreate("float value;")
+	$struct.value = $value
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "SliderFloat", "wstr", $text, "ptr", DllStructGetPtr($struct), "float", $v_min, "float", $v_max, "wstr", $format, "float", $power)
+	If @error Then Return SetError(1, 0, 0)
+	$value = $struct.value
+	Return $result[0]
+EndFunc
+
+
+Func _ImGui_SliderFloat2($label, ByRef $v, $v_min, $v_max, $format = "%.3f", $power = 1)
+	___ImGui_SliderFloatN(2, $label, $v, $v_min, $v_max, $format, $power)
+EndFunc
+Func _ImGui_SliderFloat3($label, ByRef $v, $v_min, $v_max, $format = "%.3f", $power = 1)
+	___ImGui_SliderFloatN(3, $label, $v, $v_min, $v_max, $format, $power)
+EndFunc
+Func _ImGui_SliderFloat4($label, ByRef $v, $v_min, $v_max, $format = "%.3f", $power = 1)
+	___ImGui_SliderFloatN(4, $label, $v, $v_min, $v_max, $format, $power)
+EndFunc
+
+Func ___ImGui_SliderFloatN($n, $label, ByRef $v, $v_min, $v_max, $format, $power)
+	If $n < 2 Or $n > 4 Or UBound($v) < $n Then Return SetError(1, 0, 0)
+
+	Local $struct_value = DllStructCreate("float[" & $n & "]")
+	For $i = 0 To $n-1
+		DllStructSetData($struct_value, 1, $v[$i], $i + 1)
+	Next
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "SliderFloatN", _
+		"int", $n, _
+		"wstr", $label, _
+		"ptr", DllStructGetPtr($struct_value), _
+		"float", $v_min, _
+		"float", $v_max, _
+		"wstr", $format, _
+		"float", $power _
+	)
+
+	If @error Then Return False
+
+	For $i = 0 To $n-1
+		$v[$i] = DllStructGetData($struct_value, 1, $i + 1)
+	Next
+
+	Return $result[0]
+EndFunc
+
+
+Func _ImGui_SliderInt($label, ByRef $v, $v_min, $v_max, $format = "%d")
+
+	Local $struct = DllStructCreate("int value;")
+	$struct.value = $v
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "SliderInt", "wstr", $label, "ptr", DllStructGetPtr($struct), "int", $v_min, "int", $v_max, "wstr", $format)
+	If @error Then Return SetError(1, 0, 0)
+	$v = $struct.value
+	Return $result[0]
+
+EndFunc
+
+Func _ImGui_SliderInt2($label, ByRef $v, $v_min, $v_max, $format = "%d")
+	___ImGui_SliderIntN(2, $label, $v, $v_min, $v_max, $format)
+EndFunc
+Func _ImGui_SliderInt3($label, ByRef $v, $v_min, $v_max, $format = "%d")
+	___ImGui_SliderIntN(3, $label, $v, $v_min, $v_max, $format)
+EndFunc
+Func _ImGui_SliderInt4($label, ByRef $v, $v_min, $v_max, $format = "%d")
+	___ImGui_SliderIntN(4, $label, $v, $v_min, $v_max, $format)
+EndFunc
+
+Func ___ImGui_SliderIntN($n, $label, ByRef $v, $v_min, $v_max, $format)
+	If $n < 2 Or $n > 4 Or UBound($v) < $n Then Return SetError(1, 0, 0)
+
+	Local $struct_value = DllStructCreate("int[" & $n & "]")
+	For $i = 0 To $n-1
+		DllStructSetData($struct_value, 1, $v[$i], $i + 1)
+	Next
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "SliderIntN", _
+		"int", $n, _
+		"wstr", $label, _
+		"ptr", DllStructGetPtr($struct_value), _
+		"int", $v_min, _
+		"int", $v_max, _
+		"wstr", $format _
+	)
+
+	If @error Then Return False
+
+	For $i = 0 To $n-1
+		$v[$i] = DllStructGetData($struct_value, 1, $i + 1)
+	Next
+
+	Return $result[0]
+EndFunc
+
 Func _ImGui_SliderAngle($label, ByRef $v_rad, $v_degrees_min = -360, $v_degrees_max = 360, $format = "%.0f deg")
 	Local $struct_v_rad = DllStructCreate('float value;')
 	$struct_v_rad.value = $v_rad
@@ -1309,6 +1505,44 @@ Func _ImGui_VSliderInt($label, $size_x, $size_y, ByRef $v, $v_min, $v_max, $form
 	$v = $struct_v.value
 	Return $result[0]
 EndFunc
+
+Func _ImGui_InputText($label, ByRef $buf, $flags = $ImGuiInputTextFlags_None, $buf_size = 128000)
+
+
+	Local $struct_buf = DllStructCreate('wchar value[' & $buf_size & '];')
+	$struct_buf.value = $buf
+
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputText", "wstr", $label, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "int", $flags, "ptr", 0, "ptr", 0)
+	If @error Then Return SetError(1, 0, 0)
+
+	$buf = $struct_buf.value
+	Return $result[0]
+EndFunc
+
+Func _ImGui_InputTextMultiline($label, ByRef $buf, $size_x = 0, $size_y = 0, $flags = $ImGuiInputTextFlags_None, $buf_size = 128000)
+
+	Local $struct_buf = DllStructCreate('wchar value[' & $buf_size & '];')
+	$struct_buf.value = $buf
+
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputTextMultiline", "wstr", $label, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "float", $size_x, "float", $size_y, "int", $flags, "ptr", 0, "ptr", 0)
+
+	If @error Then Return SetError(1, 0, 0)
+
+	$buf = $struct_buf.value
+	Return $result[0]
+EndFunc
+
+Func _ImGui_InputTextWithHint($label, $hint, ByRef $buf, $flags = $ImGuiInputTextFlags_None, $buf_size = 128000)
+
+	Local $struct_buf = DllStructCreate('wchar value[' & $buf_size & '];')
+	$struct_buf.value = $buf
+
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputTextWithHint", "wstr", $label, "wstr", $hint, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "int", $flags)
+	If @error Then Return SetError(1, 0, 0)
+	$buf = $struct_buf.value
+	Return $result[0]
+EndFunc
+
 Func _ImGui_InputFloat($label, ByRef $v, $step = 0, $step_fast = 0, $format = "%.3f", $flags = $ImGuiInputTextFlags_None)
 	Local $struct_v = DllStructCreate('float value;')
 	$struct_v.value = $v
@@ -1317,6 +1551,38 @@ Func _ImGui_InputFloat($label, ByRef $v, $step = 0, $step_fast = 0, $format = "%
 	$v = $struct_v.value
 	Return $result[0]
 EndFunc
+
+Func _ImGui_InputFloat2($label, ByRef $v, $format = "%.3f", $flags = $ImGuiInputTextFlags_None)
+	___ImGui_InputFloatN(2, $label, $v, $format, $flags)
+EndFunc
+Func _ImGui_InputFloat3($label, ByRef $v, $format = "%.3f", $flags = $ImGuiInputTextFlags_None)
+	___ImGui_InputFloatN(3, $label, $v, $format, $flags)
+EndFunc
+Func _ImGui_InputFloat4($label, ByRef $v, $format = "%.3f", $flags = $ImGuiInputTextFlags_None)
+	___ImGui_InputFloatN(4, $label, $v, $format, $flags)
+EndFunc
+Func ___ImGui_InputFloatN($n, $label, ByRef $v, $format, $flags)
+	If $n < 2 Or $n > 4 Or UBound($v) < $n Then Return SetError(1, 0, 0)
+
+	Local $struct_value = DllStructCreate("float[" & $n & "]")
+	For $i = 0 To $n-1
+		DllStructSetData($struct_value, 1, $v[$i], $i + 1)
+	Next
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputFloatN", _
+		"int", $n, _
+		"wstr", $label, _
+		"ptr", DllStructGetPtr($struct_value), _
+		"wstr", $format, _
+		"int", $flags _
+	)
+
+	If @error Then Return False
+	For $i = 0 To $n-1
+		$v[$i] = DllStructGetData($struct_value, 1, $i + 1)
+	Next
+	Return $result[0]
+EndFunc
+
 Func _ImGui_InputInt($label, ByRef $v, $step = 1, $step_fast = 100, $flags = $ImGuiInputTextFlags_None)
 	Local $struct_v = DllStructCreate('int value;')
 	$struct_v.value = $v
@@ -1325,12 +1591,58 @@ Func _ImGui_InputInt($label, ByRef $v, $step = 1, $step_fast = 100, $flags = $Im
 	$v = $struct_v.value
 	Return $result[0]
 EndFunc
+
+Func _ImGui_InputInt2($label, ByRef $v, $flags = $ImGuiInputTextFlags_None)
+	___ImGui_InputIntN(2, $label, $v, $flags)
+EndFunc
+Func _ImGui_InputInt3($label, ByRef $v, $flags = $ImGuiInputTextFlags_None)
+	___ImGui_InputIntN(3, $label, $v, $flags)
+EndFunc
+Func _ImGui_InputInt4($label, ByRef $v, $flags = $ImGuiInputTextFlags_None)
+	___ImGui_InputIntN(4, $label, $v, $flags)
+EndFunc
+Func ___ImGui_InputIntN($n, $label, ByRef $v, $flags)
+	If $n < 2 Or $n > 4 Or UBound($v) < $n Then Return SetError(1, 0, 0)
+
+	Local $struct_value = DllStructCreate("int[" & $n & "]")
+	For $i = 0 To $n-1
+		DllStructSetData($struct_value, 1, $v[$i], $i + 1)
+	Next
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputIntN", _
+		"int", $n, _
+		"wstr", $label, _
+		"ptr", DllStructGetPtr($struct_value), _
+		"int", $flags _
+	)
+	If @error Then Return False
+	For $i = 0 To $n-1
+		$v[$i] = DllStructGetData($struct_value, 1, $i + 1)
+	Next
+	Return $result[0]
+EndFunc
+
 Func _ImGui_InputDouble($label, ByRef $v, $step = 0, $step_fast = 0, $format = "%.6f", $flags = $ImGuiInputTextFlags_None)
 	Local $struct_v = DllStructCreate('double value;')
 	$struct_v.value = $v
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputDouble", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "double", $step, "double", $step_fast, "wstr", $format, "int", $flags)
 	If @error Then Return SetError(1, 0, 0)
 	$v = $struct_v.value
+	Return $result[0]
+EndFunc
+Func _ImGui_ColorEdit($label, ByRef $color, $flags = $ImGuiColorEditFlags_None)
+	Local $struct_v = DllStructCreate('uint value;')
+	$struct_v.value = $color
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ColorEdit", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "int", $flags)
+	If @error Then Return SetError(1, 0, 0)
+	$color = $struct_v.value
+	Return $result[0]
+EndFunc
+Func _ImGui_ColorPicker($label, ByRef $color, $flags = $ImGuiColorEditFlags_None)
+	Local $struct_v = DllStructCreate('uint value;')
+	$struct_v.value = $color
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "ColorPicker", "wstr", $label, "ptr", DllStructGetPtr($struct_v), "int", $flags)
+	If @error Then Return SetError(1, 0, 0)
+	$color = $struct_v.value
 	Return $result[0]
 EndFunc
 Func _ImGui_TreeNode($label)
@@ -1473,7 +1785,7 @@ EndFunc
 Func _ImGui_EndMainMenuBar()
 	DllCall($IMGUI_DLL, "none:cdecl", "EndMainMenuBar")
 EndFunc
-Func _ImGui_BeginMenu($label, $enabled)
+Func _ImGui_BeginMenu($label, $enabled = True)
 	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "BeginMenu", "wstr", $label, "boolean", $enabled)
 	If @error Then Return SetError(1, 0, 0)
 	Return $result[0]
@@ -1981,7 +2293,7 @@ Func _ImDraw_PathRect($rect_min_x, $rect_min_y, $rect_max_x, $rect_max_y, $round
 	DllCall($IMGUI_DLL, "none:cdecl", "PathRect", "ptr", $ImDrawList_ptr, "float", $rect_min_x, "float", $rect_min_y, "float", $rect_max_x, "float", $rect_max_y, "float", $rounding, "int", $rounding_corners)
 EndFunc
 
-Func _ImDraw_AddImageFit($user_texture_id, $pos_x, $pos_y, $size_x, $size_y, $crop_area = True, $rounding = 0, $tint_col = 0xFFFFFFFF, $rounding_corners = $ImDrawCornerFlags_All)
+Func _ImDraw_AddImageFit($user_texture_id, $pos_x, $pos_y, $size_x = 0, $size_y = 0, $crop_area = True, $rounding = 0, $tint_col = 0xFFFFFFFF, $rounding_corners = $ImDrawCornerFlags_All)
 	DllCall($IMGUI_DLL, "none:cdecl", "AddImageFit", _
 	"ptr", $ImDrawList_ptr, _
 	"ptr", $user_texture_id, _
@@ -1995,8 +2307,15 @@ Func _ImDraw_AddImageFit($user_texture_id, $pos_x, $pos_y, $size_x, $size_y, $cr
 	"int", $rounding_corners)
 EndFunc
 
-Func _ImGui_ImageFit($user_texture_id, $size_x, $size_y, $tint_col = 0xFFFFFFFF, $border_col = 0x0)
-	DllCall($IMGUI_DLL, "none:cdecl", "ImageFit", "ptr", $user_texture_id, "float", $size_x, "float", $size_y, "int", $tint_col, "int", $border_col)
+Func _ImGui_ImageFit($user_texture_id, $size_x = 0, $size_y = 0, $crop_area = True, $rounding = 0, $tint_col = 0xFFFFFFFF, $rounding_corners = $ImDrawCornerFlags_All)
+	DllCall($IMGUI_DLL, "none:cdecl", "ImageFit", _
+	"ptr", $user_texture_id, _
+	"float", $size_x, _
+	"float", $size_y, _
+	"boolean", $crop_area, _
+	"float", $rounding, _
+	"uint", $tint_col, _
+	"int", $rounding_corners)
 EndFunc
 
 Func _ImGui_ImageFromFile($file_path)
