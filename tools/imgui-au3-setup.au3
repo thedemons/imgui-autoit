@@ -13,7 +13,7 @@ Global $SciTEUser_Content = StringStripWS(FileRead($SciTEUserDir & "\SciTEUser.p
 Global $sCallTipPath = $SciTEUserDir & "\au3.user.calltips.api"
 Global $sKeyWordPath = $SciTEUserDir & "\au3.userudfs.properties"
 Global $aCallTip, $cc
-
+Global $i_Updated = 0, $i_Imported = 0
 _FileReadToArray($sCallTipPath, $aCallTip)
 If IsArray($aCallTip) = False Then
 	Local $aCallTip[1] = [0]
@@ -22,25 +22,14 @@ EndIf
 _ArraySort($aCallTip, 0, 1)
 Local $index_start = $aCallTip[0]
 
-;~ GetStr()
+GetStr()
 ;~ Exit
 _WriteImGuiUDF()
 _ChangeUDFColor()
 
-If $aCallTip[0] > $index_start Then
-	For $i = $index_start To $aCallTip[0]
-		If StringLeft($aCallTip[$i], 1) <> "$" Then
-			If StringRight($aCallTip[$i], 1) = " " Then
-				$aCallTip[$i] &= '#include <ImGui.au3>'
-			ElseIf StringRight($aCallTip[$i], 1) <> '.' Then
-				$aCallTip[$i] &= '.'
-				ConsoleWrite($aCallTip[$i] & @CRLF)
-			EndIf
-		EndIf
-	Next
+If $i_Updated > 0 Or $i_Imported > 0 Then
 	_Save_Exit_UCT()
-
-	MsgBox(64, "ImGui-AutoIt setup", "Setup completed.")
+	MsgBox(64, "ImGui-AutoIt setup", "Setup completed." & @CRLF & @CRLF & " - Updated: " & $i_Updated & @CRLF & " - Imported: " & $i_Imported)
 Else
 	MsgBox(64, "ImGui-AutoIt setup", "No change has been made.")
 EndIf
@@ -68,7 +57,6 @@ Func _WriteImGuiUDF()
 	_Write_CallTip("_ImGui_InputTextMultiline", 		'_ImGui_InputTextMultiline($label, ByRef $buf, $size_x = 0, $size_y = 0, $flags = $ImGuiInputTextFlags_None, $buf_size = 128000) Return true if the user has typed anything')
 	_Write_CallTip("_ImGui_InputTextWithHint", 			'_ImGui_InputTextWithHint($label, $hint, ByRef $buf, $flags = $ImGuiInputTextFlags_None, $buf_size = 128000)  Return true if the user has typed anything')
 	_Write_CallTip("_ImGui_Text", 						'_ImGui_Text($text) Just a simple text')
-	_Write_CallTip("_ImGui_SliderFloat", 				'_ImGui_SliderFloat($text, ByRef $value, $v_min, $v_max, $format = "%.3f", $power = 1) Return true if being clicked on')
 	_Write_CallTip("_ImGui_CheckBox", 					'_ImGui_CheckBox($text, ByRef $active) Return true if the value has changed')
 	_Write_CallTip("_ImGui_BeginFrame", 				'_ImGui_BeginFrame() Begin a new frame')
 	_Write_CallTip("_ImGui_EndFrame", 					'_ImGui_EndFrame($clear_color = 0xFF738C99) $clear_color: background color')
@@ -80,11 +68,15 @@ Func _WriteImGuiUDF()
 	_Write_CallTip("_ImGui_IsWindowFocused", 			'_ImGui_IsWindowFocused($flags = $ImGuiFocusedFlags_None) Check if window is focused')
 	_Write_CallTip("_ImGui_IsWindowHovered", 			'_ImGui_IsWindowHovered($flags = $ImGuiFocusedFlags_None) Check if window is hovered')
 	_Write_CallTip("_ImGui_GetWindowDrawList", 			'_ImGui_GetWindowDrawList() Get window draw list.')
+	_Write_CallTip("_ImGui_GetWindowDpiScale", 			'_ImGui_GetWindowDpiScale() Get current window DPI scale')
+	_Write_CallTip("_ImGui_GetWindowViewport", 			'_ImGui_GetWindowViewport() Get current window viewport')
 	_Write_CallTip("_ImGui_GetOverlayDrawList", 		'_ImGui_GetOverlayDrawList() Get overlay draw list.')
 	_Write_CallTip("_ImGui_GetBackgroundDrawList", 		'_ImGui_GetBackgroundDrawList() Get background draw list.')
 	_Write_CallTip("_ImGui_GetForegroundDrawList", 		'_ImGui_GetForegroundDrawList() Get foreground list.')
 	_Write_CallTip("_ImGui_GetWindowPos", 				'_ImGui_GetWindowPos() Get current window position. Return [x, y]')
 	_Write_CallTip("_ImGui_GetWindowSize", 					'_ImGui_GetWindowSize() Get current window size. Return [x, y]')
+	_Write_CallTip("_ImGui_GetWindowWidth", 					'_ImGui_GetWindowWidth() Get current window width')
+	_Write_CallTip("_ImGui_GetWindowHeight", 					'_ImGui_GetWindowHeight() Get current window height')
 	_Write_CallTip("_ImGui_GetMousePos", 						'_ImGui_GetMousePos() Get mouse position. Return [x, y]')
 	_Write_CallTip("_ImGui_GetMousePosOnOpeningCurrentPopup", 	'_ImGui_GetMousePosOnOpeningCurrentPopup() Get mouse position on the current openning popup window. Return [x, y]')
 	_Write_CallTip("_ImGui_GetMouseDragDelta",				 	'_ImGui_GetMouseDragDelta($button = $ImGuiMouseButton_Left, $lock_threshold = -1) Get mouse drag delta. Return [x, y]')
@@ -195,13 +187,37 @@ Func _WriteImGuiUDF()
 	_Write_CallTip("_ImGui_SetColumnOffset", 			'_ImGui_SetColumnOffset($column_index, $offset) ')
 	_Write_CallTip("_ImGui_GetColumnsCount", 			'_ImGui_GetColumnsCount() ')
 	_Write_CallTip("_ImGui_DragFloat", 					'_ImGui_DragFloat($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%3.f", $power = 1) ')
+	_Write_CallTip("_ImGui_DragFloat2", 				'_ImGui_DragFloat2($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%.3f", $power = 1) ')
+	_Write_CallTip("_ImGui_DragFloat3", 				'_ImGui_DragFloat3($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%.3f", $power = 1) ')
+	_Write_CallTip("_ImGui_DragFloat4", 				'_ImGui_DragFloat4($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%.3f", $power = 1) ')
+	_Write_CallTip("_ImGui_DragFloatRange2", 			'_ImGui_DragFloatRange2($label, ByRef $v_current_min, ByRef $v_current_max, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%.3f", $format_max = "", $power = 1) ')
 	_Write_CallTip("_ImGui_DragInt", 					'_ImGui_DragInt($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%d") ')
+	_Write_CallTip("_ImGui_DragInt2", 					'_ImGui_DragInt2($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format ="%d") ')
+	_Write_CallTip("_ImGui_DragInt3", 					'_ImGui_DragInt3($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format ="%d") ')
+	_Write_CallTip("_ImGui_DragInt4", 					'_ImGui_DragInt4($label, ByRef $v, $v_speed = 1, $v_min = 0, $v_max = 0, $format ="%d") ')
+	_Write_CallTip("_ImGui_DragIntRange2", 				'_ImGui_DragIntRange2($label, ByRef $v_current_min, ByRef $v_current_max, $v_speed = 1, $v_min = 0, $v_max = 0, $format = "%.3f", $format_max = "") ')
+	_Write_CallTip("_ImGui_SliderFloat", 				'_ImGui_SliderFloat($text, ByRef $value, $v_min, $v_max, $format = "%.3f", $power = 1) Return true if being clicked on')
+	_Write_CallTip("_ImGui_SliderFloat2", 				'_ImGui_SliderFloat2($label, ByRef $v, $v_min, $v_max, $format = "%.3f", $power = 1) ')
+	_Write_CallTip("_ImGui_SliderFloat3", 				'_ImGui_SliderFloat3($label, ByRef $v, $v_min, $v_max, $format = "%.3f", $power = 1) ')
+	_Write_CallTip("_ImGui_SliderFloat4", 				'_ImGui_SliderFloat4($label, ByRef $v, $v_min, $v_max, $format = "%.3f", $power = 1) ')
 	_Write_CallTip("_ImGui_SliderAngle", 				'_ImGui_SliderAngle($label, ByRef $v_rad, $v_degrees_min = -360, $v_degrees_max = 360, $format = "%.0f deg") ')
-	_Write_CallTip("_ImGui_VSliderFloat", 				'_ImGui_VSliderFloat($label, $size_x, $size_y, ByRef $v, $v_min, $v_max, $format = "%.3f", $power = 1) ')
+	_Write_CallTip("_ImGui_SliderInt", 					'_ImGui_SliderInt($label, ByRef $v, $v_min, $v_max, $format = "%d") ')
+	_Write_CallTip("_ImGui_SliderInt2", 				'_ImGui_SliderInt2($label, ByRef $v, $v_min, $v_max, $format = "%d") ')
+	_Write_CallTip("_ImGui_SliderInt3", 				'_ImGui_SliderInt3($label, ByRef $v, $v_min, $v_max, $format = "%d") ')
+	_Write_CallTip("_ImGui_SliderInt4", 				'_ImGui_SliderInt4($label, ByRef $v, $v_min, $v_max, $format = "%d") ')
 	_Write_CallTip("_ImGui_VSliderInt", 				'_ImGui_VSliderInt($label, $size_x, $size_y, ByRef $v, $v_min, $v_max, $format = "%d") ')
+	_Write_CallTip("_ImGui_VSliderFloat", 				'_ImGui_VSliderFloat($label, $size_x, $size_y, ByRef $v, $v_min, $v_max, $format = "%.3f", $power = 1) ')
 	_Write_CallTip("_ImGui_InputFloat", 				'_ImGui_InputFloat($label, ByRef $v, $step = 0, $step_fast = 0, $format = "%.3f", $flags = $ImGuiInputTextFlags_None) ')
+	_Write_CallTip("_ImGui_InputFloat2", 				'_ImGui_InputFloat2($label, ByRef $v, $format = "%.3f", $flags = $ImGuiInputTextFlags_None) ')
+	_Write_CallTip("_ImGui_InputFloat3", 				'_ImGui_InputFloat3($label, ByRef $v, $format = "%.3f", $flags = $ImGuiInputTextFlags_None) ')
+	_Write_CallTip("_ImGui_InputFloat4", 				'_ImGui_InputFloat4($label, ByRef $v, $format = "%.3f", $flags = $ImGuiInputTextFlags_None) ')
 	_Write_CallTip("_ImGui_InputInt", 					'_ImGui_InputInt($label, ByRef $v, $step = 1, $step_fast = 100, $flags = $ImGuiInputTextFlags_None) ')
+	_Write_CallTip("_ImGui_InputInt2", 					'_ImGui_InputInt2($label, ByRef $v, $flags = $ImGuiInputTextFlags_None) ')
+	_Write_CallTip("_ImGui_InputInt3", 					'_ImGui_InputInt3($label, ByRef $v, $flags = $ImGuiInputTextFlags_None) ')
+	_Write_CallTip("_ImGui_InputInt4", 					'_ImGui_InputInt4($label, ByRef $v, $flags = $ImGuiInputTextFlags_None) ')
 	_Write_CallTip("_ImGui_InputDouble", 				'_ImGui_InputDouble($label, ByRef $v, $step = 0, $step_fast = 0, $format = "%.6f", $flags = $ImGuiInputTextFlags_None) ')
+	_Write_CallTip("_ImGui_ColorEdit", 					'_ImGui_ColorEdit($label, ByRef $color, $flags = $ImGuiColorEditFlags_None) ')
+	_Write_CallTip("_ImGui_ColorPicker", 				'_ImGui_ColorPicker($label, ByRef $color, $flags = $ImGuiColorEditFlags_None) ')
 	_Write_CallTip("_ImGui_TreeNode", 					'_ImGui_TreeNode($label) ')
 	_Write_CallTip("_ImGui_TreeNodeEx", 				'_ImGui_TreeNodeEx($label, $flags = $ImGuiTreeNodeFlags_None) ')
 	_Write_CallTip("_ImGui_TreePush", 					'_ImGui_TreePush($str_id) ')
@@ -223,7 +239,7 @@ Func _WriteImGuiUDF()
 	_Write_CallTip("_ImGui_EndMenuBar", 				'_ImGui_EndMenuBar() ')
 	_Write_CallTip("_ImGui_BeginMainMenuBar", 			'_ImGui_BeginMainMenuBar() ')
 	_Write_CallTip("_ImGui_EndMainMenuBar", 			'_ImGui_EndMainMenuBar() ')
-	_Write_CallTip("_ImGui_BeginMenu", 					'_ImGui_BeginMenu($label, $enabled) ')
+	_Write_CallTip("_ImGui_BeginMenu", 					'_ImGui_BeginMenu($label, $enabled = True) ')
 	_Write_CallTip("_ImGui_EndMenu", 					'_ImGui_EndMenu() ')
 	_Write_CallTip("_ImGui_MenuItem", 					'_ImGui_MenuItem($label, $shortcut = "", $selected = False, $enabled = True) ')
 	_Write_CallTip("_ImGui_MenuItemEx", 				'_ImGui_MenuItemEx($label, $shortcut, ByRef $p_selected, $enabled = True) ')
@@ -339,8 +355,8 @@ Func _WriteImGuiUDF()
 	_Write_CallTip("_ImDraw_PathRect", 						'_ImDraw_PathRect($rect_min_x, $rect_min_y, $rect_max_x, $rect_max_y, $rounding = 0, $rounding_corners = $ImDrawCornerFlags_All) ')
 	_Write_CallTip("_ImDraw_PathBezierCurveTo", 			'_ImDraw_PathBezierCurveTo($p2_x, $p2_y, $p3_x, $p3_y, $p4_x, $p4_y, $num_segments = 0) ')
 
-	_Write_CallTip("_ImDraw_AddImageFit", 					'_ImDraw_AddImageFit($user_texture_id, $pos_x, $pos_y, $size_x, $size_y, $crop_area = True, $rounding = 0, $tint_col = 0xFFFFFFFF, $rounding_corners = $ImDrawCornerFlags_All) ')
-	_Write_CallTip("_ImGui_ImageFit", 						'_ImGui_ImageFit($user_texture_id, $size_x, $size_y, $tint_col = 0xFFFFFFFF, $border_col = 0x0) ')
+	_Write_CallTip("_ImDraw_AddImageFit", 					'_ImDraw_AddImageFit($user_texture_id, $pos_x, $pos_y, $size_x = 0, $size_y = 0, $crop_area = True, $rounding = 0, $tint_col = 0xFFFFFFFF, $rounding_corners = $ImDrawCornerFlags_All) ')
+	_Write_CallTip("_ImGui_ImageFit", 						'_ImGui_ImageFit($user_texture_id, $size_x = 0, $size_y = 0, $crop_area = True, $rounding = 0, $tint_col = 0xFFFFFFFF, $rounding_corners = $ImDrawCornerFlags_All) ')
 	_Write_CallTip("_ImGui_ImageFromFile", 					'_ImGui_ImageFromFile($file_path) ')
 	_Write_CallTip("_ImGui_ImageFromURL", 					'_ImGui_ImageFromURL($url) ')
 	_Write_CallTip("_ImGui_ImageGetSize", 					'_ImGui_ImageGetSize($user_texture_id) ')
@@ -794,6 +810,15 @@ EndFunc
 
 Func _Write_CallTip( $sUDF_Title, $sUDF_Text)
 	Local $iCallTip_Line = -1
+
+	If StringLeft($sUDF_Text, 1) <> "$" Then
+		If StringRight($sUDF_Text, 1) = " " Then
+			$sUDF_Text &= '#include <ImGui.au3>'
+		ElseIf StringRight($sUDF_Text, 1) <> '.' Then
+			$sUDF_Text &= '.'
+		EndIf
+	EndIf
+
 	For $i = 1 To $aCallTip[0]
 		If (StringLeft($sUDF_Title, 1) = "$" And $aCallTip[$i] = $sUDF_Text) Or _
 			(StringLeft($aCallTip[$i], StringLen($sUDF_Title)+1) = $sUDF_Title & "(") Then
@@ -803,10 +828,16 @@ Func _Write_CallTip( $sUDF_Title, $sUDF_Text)
 	Next
 	If $iCallTip_Line = -1 Then
 		; If not found then add
+		$i_Imported += 1
 		_ArrayAdd($aCallTip, $sUDF_Text)
 		$aCallTip[0] += 1
+		ConsoleWrite("Imported: " & $sUDF_Text & @CRLF)
 	Else
-		$aCallTip[$iCallTip_Line] = $sUDF_Text
+		If $sUDF_Text <> $aCallTip[$iCallTip_Line] Then
+			$i_Updated += 1
+			$aCallTip[$iCallTip_Line] = $sUDF_Text
+			ConsoleWrite("Updated: " & $sUDF_Text & @CRLF)
+		EndIf
 	EndIf
 EndFunc   ;==>_Write_CallTip
 
