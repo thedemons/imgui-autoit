@@ -15,6 +15,9 @@
 
 <img src="https://i.imgur.com/u1XKVkY.png" width="505">
 
+### Requirements
+- This library requires you to have [DirectX](https://www.microsoft.com/en-us/download/confirmation.aspx?id=35) installed.
+
 ### Usage
 ```autoit
 #include <WinAPI.au3>
