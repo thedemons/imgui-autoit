@@ -524,6 +524,9 @@ Global Const $ImGuiCol_NavHighlight = 46
 Global Const $ImGuiCol_NavWindowingHighlight = 47
 Global Const $ImGuiCol_NavWindowingDimBg = 48
 Global Const $ImGuiCol_ModalWindowDimBg = 49
+Global Const $ImGuiCol_DockingPreview_1 = 50
+Global Const $ImGuiCol_DockingOutLine = 51
+Global Const $ImGuiCol_DockingLine = 52
 
 Global Const $ImGuiStyleVar_Alpha = 0
 Global Const $ImGuiStyleVar_WindowPadding = 1
@@ -1092,7 +1095,22 @@ EndFunc
 Func _ImGui_SetCursorPos($local_pos_x, $local_pos_y)
 	DllCall($IMGUI_DLL, "none:cdecl", "SetCursorPosition", "float", $local_pos_x, "float", $local_pos_y)
 EndFunc
-
+Func _ImGui_GetCursorPosX()
+	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetCursorPosX")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_GetCursorPosY()
+	Local $result = DllCall($IMGUI_DLL, "float:cdecl", "GetCursorPosY")
+	If @error Then Return False
+	Return $result[0]
+EndFunc
+Func _ImGui_SetCursorPosX($x)
+	DllCall($IMGUI_DLL, "none:cdecl", "SetCursorPosX", "float", $x)
+EndFunc
+Func _ImGui_SetCursorPosY($y)
+	DllCall($IMGUI_DLL, "none:cdecl", "SetCursorPosY", "float", $y)
+EndFunc
 Func _ImGui_GetCursorStartPos()
 	Return ___ImGui_RecvImVec2("none:cdecl", "GetCursorStartPos")
 EndFunc
@@ -1506,13 +1524,13 @@ Func _ImGui_VSliderInt($label, $size_x, $size_y, ByRef $v, $v_min, $v_max, $form
 	Return $result[0]
 EndFunc
 
-Func _ImGui_InputText($label, ByRef $buf, $flags = $ImGuiInputTextFlags_None, $buf_size = 128000)
+Func _ImGui_InputText($label, ByRef $buf, $flags = $ImGuiInputTextFlags_None, $buf_size = 128000, $call_back = 0)
 
 
 	Local $struct_buf = DllStructCreate('wchar value[' & $buf_size & '];')
 	$struct_buf.value = $buf
 
-	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputText", "wstr", $label, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "int", $flags, "ptr", 0, "ptr", 0)
+	Local $result = DllCall($IMGUI_DLL, "boolean:cdecl", "InputText", "wstr", $label, "ptr", DllStructGetPtr($struct_buf), "int", $buf_size, "int", $flags, "ptr", $call_back, "ptr", 0)
 	If @error Then Return SetError(1, 0, 0)
 
 	$buf = $struct_buf.value
